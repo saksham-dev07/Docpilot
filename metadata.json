@@ -1,0 +1,5 @@
+{
+  "name": "AetherMed AI",
+  "description": "A comprehensive medical suite for doctors and patients, featuring AI-driven diagnostics, consultation management, and clinical intelligence.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

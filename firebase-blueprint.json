@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information for both doctors and patients.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": { "type": "string", "enum": ["doctor", "patient"] },
+        "specialty": { "type": "string", "description": "For doctors only" },
+        "licenseNumber": { "type": "string", "description": "For doctors only" },
+        "patientId": { "type": "string", "description": "For patients only" },
+        "bloodType": { "type": "string" },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "firstName", "lastName", "role", "createdAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Scheduled appointment between a doctor and a patient.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "patientName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "type": { "type": "string", "enum": ["In-person", "Video Call"] },
+        "status": { "type": "string", "enum": ["Scheduled", "In Progress", "Completed", "Waiting"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["doctorId", "patientId", "date", "time", "type", "status", "createdAt"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "description": "Video consultation record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorName": { "type": "string" },
+        "patientName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["Live", "Scheduled", "Completed"] },
+        "summary": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["doctorId", "patientId", "date", "time", "status", "createdAt"]
+    },
+    "MedicalRecord": {
+      "title": "MedicalRecord",
+      "description": "Patient medical record or document.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "size": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "name", "type", "date", "createdAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Billing invoice for a patient.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Pending", "Overdue"] },
+        "method": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "doctorId", "patientName", "date", "amount", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents."
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Appointment documents."
+    },
+    "/consultations/{consultationId}": {
+      "schema": "Consultation",
+      "description": "Consultation documents."
+    },
+    "/records/{recordId}": {
+      "schema": "MedicalRecord",
+      "description": "Medical record documents."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Billing invoice documents."
+    }
+  }
+}

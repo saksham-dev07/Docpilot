@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - firstName: string (required)
+    //   - lastName: string (required)
+    //   - role: string (required, 'doctor' or 'patient')
+    //   - specialty: string (optional, for doctors)
+    //   - licenseNumber: string (optional, for doctors)
+    //   - patientId: string (optional, for patients)
+    //   - bloodType: string (optional)
+    //   - allergies: list (optional)
+    //   - createdAt: string (required)
+    //
+    // Collection: appointments
+    // Document ID: appointmentId
+    // Fields:
+    //   - doctorId: string (required)
+    //   - patientId: string (required)
+    //   - doctorName: string (required)
+    //   - patientName: string (required)
+    //   - date: string (required)
+    //   - time: string (required)
+    //   - type: string (required)
+    //   - status: string (required)
+    //   - createdAt: string (required)
+    //
+    // Collection: consultations
+    // Document ID: consultationId
+    // Fields:
+    //   - doctorId: string (required)
+    //   - patientId: string (required)
+    //   - doctorName: string (required)
+    //   - patientName: string (required)
+    //   - date: string (required)
+    //   - time: string (required)
+    //   - status: string (required)
+    //   - summary: string (optional)
+    //   - createdAt: string (required)
+    //
+    // Collection: records
+    // Document ID: recordId
+    // Fields:
+    //   - patientId: string (required)
+    //   - name: string (required)
+    //   - type: string (required)
+    //   - date: string (required)
+    //   - size: string (optional)
+    //   - url: string (optional)
+    //   - createdAt: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+
+    function isPatient() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'patient';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'firstName', 'lastName', 'role', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 50 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 50 &&
+             data.role in ['doctor', 'patient'] &&
+             data.createdAt is string;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['doctorId', 'patientId', 'doctorName', 'patientName', 'date', 'time', 'type', 'status', 'createdAt']) &&
+             data.doctorId is string &&
+             data.patientId is string &&
+             data.doctorName is string &&
+             data.patientName is string &&
+             data.date is string &&
+             data.time is string &&
+             data.type in ['In-person', 'Video Call'] &&
+             data.status in ['Scheduled', 'In Progress', 'Completed', 'Waiting'] &&
+             data.createdAt is string;
+    }
+
+    function isValidConsultation(data) {
+      return data.keys().hasAll(['doctorId', 'patientId', 'doctorName', 'patientName', 'date', 'time', 'status', 'createdAt']) &&
+             data.doctorId is string &&
+             data.patientId is string &&
+             data.doctorName is string &&
+             data.patientName is string &&
+             data.date is string &&
+             data.time is string &&
+             data.status in ['Live', 'Scheduled', 'Completed'] &&
+             data.createdAt is string;
+    }
+
+    function isValidRecord(data) {
+      return data.keys().hasAll(['patientId', 'name', 'type', 'date', 'createdAt']) &&
+             data.patientId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type is string &&
+             data.date is string &&
+             data.createdAt is string;
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['patientId', 'doctorId', 'patientName', 'date', 'amount', 'status', 'createdAt']) &&
+             data.patientId is string &&
+             data.doctorId is string &&
+             data.patientName is string &&
+             data.date is string &&
+             data.amount is number &&
+             data.status in ['Paid', 'Pending', 'Overdue'] &&
+             data.createdAt is string;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.role == resource.data.role;
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+      allow create: if isAuthenticated() && isValidAppointment(request.resource.data) && 
+                      (request.auth.uid == request.resource.data.doctorId || request.auth.uid == request.resource.data.patientId);
+      allow update: if isAuthenticated() && isValidAppointment(request.resource.data) && 
+                      (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+    }
+
+    match /consultations/{consultationId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+      allow create: if isAuthenticated() && isValidConsultation(request.resource.data) && 
+                      (request.auth.uid == request.resource.data.doctorId || request.auth.uid == request.resource.data.patientId);
+      allow update: if isAuthenticated() && isValidConsultation(request.resource.data) && 
+                      (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+    }
+
+    match /records/{recordId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.patientId || isDoctor());
+      allow create: if isAuthenticated() && isValidRecord(request.resource.data) && 
+                      (request.auth.uid == request.resource.data.patientId || isDoctor());
+      allow update: if isAuthenticated() && isValidRecord(request.resource.data) && 
+                      (request.auth.uid == resource.data.patientId || isDoctor());
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.patientId || isDoctor());
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
+      allow create: if isAuthenticated() && isValidInvoice(request.resource.data) && 
+                      (request.auth.uid == request.resource.data.doctorId || isDoctor());
+      allow update: if isAuthenticated() && isValidInvoice(request.resource.data) && 
+                      (request.auth.uid == resource.data.doctorId || isDoctor());
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.doctorId || isDoctor());
+    }
+  }
+}
