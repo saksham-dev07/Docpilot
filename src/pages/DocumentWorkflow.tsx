@@ -21,7 +21,7 @@ import { collection, query, where, onSnapshot, addDoc, getDocs, getDoc, doc } fr
 import { ID } from 'appwrite';
 import { appwriteStorage, APPWRITE_BUCKET_ID } from '../lib/appwrite';
 import { AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Loader2 } from 'lucide-react';
 
 export const DocumentWorkflow: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -190,14 +190,10 @@ export const DocumentWorkflow: React.FC = () => {
     try {
       const pName = patientsList.find(p => p.id === selectedPatientId)?.name || 'Unknown Patient';
       
-      // Auto Append 'mg' to dosage
       const formattedMedicines = medicines.map(med => {
-        let cleanDosage = med.dosage.trim();
-        // Remove trailing "mg" or " mg" if user accidentally typed it so we don't duplicate
-        cleanDosage = cleanDosage.replace(/\s*mg$/i, '');
         return {
           ...med,
-          dosage: cleanDosage ? `${cleanDosage}mg` : ''
+          dosage: med.dosage.trim()
         };
       });
 
@@ -262,7 +258,7 @@ export const DocumentWorkflow: React.FC = () => {
         </motion.div>
         <div className="flex gap-3">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-          <button onClick={() => setShowUploadModal(true)} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+          <button onClick={() => setShowUploadModal(true)} className="px-6 py-3 bg-brand-50 border border-brand-100 rounded-2xl font-bold text-sm text-brand-600 hover:bg-brand-100 transition-all flex items-center gap-2 shadow-sm">
             <Upload className="w-4 h-4" />
             Upload Document
           </button>
@@ -341,11 +337,22 @@ export const DocumentWorkflow: React.FC = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-slate-500">Loading documents...</td>
+                  <td colSpan={5} className="px-8 py-32 text-center text-brand-600">
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                      <p className="font-bold text-slate-600 text-lg">Fetching Clinical Documents...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : filteredDocs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-slate-500">No documents found.</td>
+                  <td colSpan={5} className="px-8 py-32 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <FileText className="w-16 h-16 mb-4 text-slate-300" />
+                      <h3 className="text-xl font-bold text-slate-700 mb-2">No Documents Found</h3>
+                      <p className="text-slate-500 max-w-sm">No clinical documents match your current search and filter criteria.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : filteredDocs.map((doc) => (
                 <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">

@@ -246,8 +246,8 @@ export const PatientProfileModal: React.FC<PatientProfileModalProps> = ({ patien
                           <p className="text-xs font-medium text-slate-500 mb-2">
                             Uploaded: <span className="text-slate-700 font-bold">{doc.date || 'Unknown'}</span>
                           </p>
-                          {(doc.fileUrl || doc.url) && (
-                            <a href={doc.fileUrl || doc.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-brand-600 text-xs font-bold rounded-lg hover:bg-brand-100 transition-colors">
+                          {(doc.fileUrl || doc.url || doc.appwriteViewUrl) && (
+                            <a href={doc.fileUrl || doc.url || doc.appwriteViewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-brand-600 text-xs font-bold rounded-lg hover:bg-brand-100 transition-colors">
                               View Document <ArrowRight className="w-3 h-3" />
                             </a>
                           )}

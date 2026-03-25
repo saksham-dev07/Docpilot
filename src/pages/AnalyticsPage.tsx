@@ -213,10 +213,10 @@ export const AnalyticsPage: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Unique Patients', value: totalPatients.toString(), change: '+Active', icon: Users, color: 'text-emerald-600 bg-emerald-50' },
-          { label: 'Total Consultations', value: totalConsults.toString(), change: '+Active', icon: Activity, color: 'text-brand-600 bg-brand-50' },
-          { label: 'Gross Revenue', value: `₹${totalRevenue.toLocaleString()}`, change: '+Active', icon: TrendingUp, color: 'text-amber-600 bg-amber-50' },
-          { label: 'Records Filed', value: totalRecords.toString(), change: '+Active', icon: BarChart3, color: 'text-purple-600 bg-purple-50' },
+          { label: 'Unique Patients', value: totalPatients.toString(), change: '+Active', icon: Users, color: 'text-emerald-600 bg-emerald-50', desc: 'Total individual patients seen.' },
+          { label: 'Total Consultations', value: totalConsults.toString(), change: '+Active', icon: Activity, color: 'text-brand-600 bg-brand-50', desc: 'All incoming appointments.' },
+          { label: 'Gross Revenue', value: `₹${totalRevenue.toLocaleString()}`, change: '+Active', icon: TrendingUp, color: 'text-amber-600 bg-amber-50', desc: 'Total revenue from completed sessions.' },
+          { label: 'Records Filed', value: totalRecords.toString(), change: '+Active', icon: BarChart3, color: 'text-purple-600 bg-purple-50', desc: 'Total uploaded clinical documents.' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -235,9 +235,10 @@ export const AnalyticsPage: React.FC = () => {
               </div>
             </div>
             <p className="text-slate-500 text-sm font-medium mb-1">{stat.label}</p>
-            <h3 className="text-3xl font-display font-bold text-slate-900">
+            <h3 className="text-3xl font-display font-bold text-slate-900 mb-2">
               {loading ? '...' : stat.value}
             </h3>
+            <p className="text-xs text-slate-400 font-medium">{stat.desc}</p>
           </motion.div>
         ))}
       </div>

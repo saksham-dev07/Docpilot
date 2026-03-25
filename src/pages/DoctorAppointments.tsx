@@ -10,7 +10,8 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, getDoc } from 'firebase/firestore';
@@ -174,7 +175,18 @@ export const DoctorAppointments: React.FC = () => {
                 ))}
              </div>
            ))}
-           {filteredAppointments.length === 0 && <div className="col-span-full py-20 text-center text-slate-400 font-medium bg-white rounded-3xl border-2 border-dashed border-slate-100 mt-4">No appointments scheduled matching filters.</div>}
+           {loading ? (
+             <div className="col-span-full py-20 flex flex-col items-center justify-center text-brand-600 bg-white rounded-3xl border border-slate-100 shadow-sm mt-4">
+                <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                <p className="font-bold text-slate-600">Syncing Calendar...</p>
+             </div>
+           ) : filteredAppointments.length === 0 && (
+             <div className="col-span-full py-24 text-center bg-white rounded-3xl border border-dashed border-slate-200 mt-4 flex flex-col items-center justify-center">
+                <Calendar className="w-16 h-16 mb-4 text-slate-300" />
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No Appointments Scheduled</h3>
+                <p className="text-slate-500 max-w-sm text-center">There are no appointments matching your current calendar filters.</p>
+             </div>
+           )}
         </div>
       ) : (
       <motion.div
@@ -212,7 +224,12 @@ export const DoctorAppointments: React.FC = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400">Loading appointments...</td>
+                  <td colSpan={6} className="px-8 py-32 text-center text-brand-600">
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                      <p className="font-bold text-slate-600 text-lg">Syncing Schedule...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : filteredAppointments.length > 0 ? filteredAppointments.map((apt) => (
                 <tr key={apt.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -280,6 +297,17 @@ export const DoctorAppointments: React.FC = () => {
                         )}
                       </button>
                       <button 
+                        onClick={async () => {
+                           if(window.confirm(`Mark appointment with ${patientNames[apt.patientId] || apt.patientName} as completed?`)) {
+                              await updateDoc(doc(db, 'appointments', apt.id), { status: 'Completed' });
+                           }
+                        }}
+                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                        title="Mark as Completed"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                      </button>
+                      <button 
                         onClick={() => setRescheduleModal({ id: apt.id, date: apt.date || '', time: apt.time || '' })}
                         className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
                         title="Reschedule Drop"
@@ -302,7 +330,13 @@ export const DoctorAppointments: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400">No appointments found.</td>
+                  <td colSpan={6} className="px-8 py-32 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Calendar className="w-16 h-16 mb-4 text-slate-300" />
+                      <h3 className="text-xl font-bold text-slate-700 mb-2">Schedule Clear</h3>
+                      <p className="text-slate-500 max-w-sm">No incoming appointments found. Enjoy your downtime!</p>
+                    </div>
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -316,6 +350,7 @@ export const DoctorAppointments: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-8 space-y-6">
              <h2 className="text-2xl font-display font-bold text-slate-900">Reschedule Event</h2>
+             <p className="text-sm text-slate-500">The patient will automatically be notified of this change in their dashboard.</p>
              <div className="space-y-4">
                 <div>
                    <label className="text-sm font-bold text-slate-700 block mb-2">New Date Block</label>

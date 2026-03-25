@@ -281,9 +281,10 @@ export const PatientDashboard: React.FC = () => {
                   </div>
                 </div>
               )) : (
-                <div className="p-20 text-center text-slate-400">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>No upcoming clinic visits.</p>
+                <div className="p-24 text-center bg-white border border-dashed border-slate-200 rounded-3xl m-8">
+                  <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <h3 className="text-xl font-bold text-slate-700 mb-2">No Upcoming Visits</h3>
+                  <p className="text-slate-500 max-w-sm mx-auto">You don't have any in-person appointments scheduled. Book one to see your doctor.</p>
                 </div>
               )}
             </div>
@@ -327,9 +328,10 @@ export const PatientDashboard: React.FC = () => {
                   </div>
                 </div>
               )) : (
-                <div className="p-20 text-center text-slate-400">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>No upcoming online consultations.</p>
+                <div className="p-24 text-center bg-white border border-dashed border-slate-200 rounded-3xl m-8">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <h3 className="text-xl font-bold text-slate-700 mb-2">No Virtual Sessions</h3>
+                  <p className="text-slate-500 max-w-sm mx-auto">Connect directly with healthcare professionals through secure online chats.</p>
                 </div>
               )}
             </div>
@@ -387,9 +389,10 @@ export const PatientDashboard: React.FC = () => {
                 <div className="h-px bg-slate-50 group-last:hidden" />
               </div>
             )) : (
-              <div className="py-10 text-center text-slate-400">
-                <FileText className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                <p className="text-sm">No recent records found.</p>
+              <div className="py-14 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                <h3 className="text-lg font-bold text-slate-700 mb-2">Archive Empty</h3>
+                <p className="text-sm text-slate-500 max-w-xs mx-auto">No medical reports or prescriptions have been filed yet.</p>
               </div>
             )}
           </div>

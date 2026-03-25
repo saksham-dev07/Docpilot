@@ -14,7 +14,8 @@ import {
   Database,
   ArrowLeft,
   FolderOpen,
-  Activity
+  Activity,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { collection, query, where, onSnapshot, orderBy, getDocs, getDoc, doc } from 'firebase/firestore';
@@ -214,7 +215,11 @@ export const ArchivePage: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {loadingFolders ? (
-              <div className="col-span-full py-20 text-center text-slate-400 font-bold">Scanning Medical Database...</div>
+              <div className="col-span-full py-32 flex flex-col items-center justify-center text-brand-600">
+                <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                <p className="font-bold text-slate-600 text-lg">Scanning Medical Database...</p>
+                <p className="text-slate-400 text-sm mt-1">Retrieving all historical patient folders.</p>
+              </div>
             ) : filteredFolders.length > 0 ? filteredFolders.map((folder, i) => (
               <motion.button
                 key={folder.id}
@@ -239,9 +244,10 @@ export const ArchivePage: React.FC = () => {
                 </div>
               </motion.button>
             )) : (
-              <div className="col-span-full py-20 text-center text-slate-400">
-                <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>No patients found matching your search.</p>
+              <div className="col-span-full py-24 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                <FolderOpen className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No Patients Found</h3>
+                <p className="text-slate-500 max-w-sm mx-auto">Try adjusting your search criteria. You can search by patient name, ID, or recent encounters.</p>
               </div>
             )}
           </motion.div>
@@ -255,7 +261,11 @@ export const ArchivePage: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {loadingRecords ? (
-              <div className="col-span-full py-20 text-center text-slate-400 font-bold">Unlocking Secure Archive...</div>
+              <div className="col-span-full py-32 flex flex-col items-center justify-center text-brand-600">
+                <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                <p className="font-bold text-slate-600 text-lg">Unlocking Secure Archive...</p>
+                <p className="text-slate-400 text-sm mt-1">Decrypting clinical history and attachments.</p>
+              </div>
             ) : filteredRecords.length > 0 ? filteredRecords.map((item, i) => (
               <motion.div
                 key={item.id}
@@ -300,7 +310,7 @@ export const ArchivePage: React.FC = () => {
                       <Eye className="w-4 h-4" /> View
                     </button>
                     <button 
-                      onClick={() => window.open(item.appwriteDownloadUrl || item.appwriteViewUrl, '_blank')}
+                      onClick={() => window.open(item.appwriteDownloadUrl || item.appwriteViewUrl || item.fileUrl || item.fileData, '_blank')}
                       className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:text-brand-600 hover:bg-brand-50 transition-all shrink-0">
                       <Download className="w-4 h-4" />
                     </button>
@@ -308,9 +318,10 @@ export const ArchivePage: React.FC = () => {
                 </div>
               </motion.div>
             )) : (
-              <div className="col-span-full py-20 text-center text-slate-400">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>No records have been filed for this patient.</p>
+              <div className="col-span-full py-24 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No Clinical Records</h3>
+                <p className="text-slate-500 max-w-sm mx-auto">This patient does not have any filed prescriptions, lab reports, or consultation histories yet.</p>
               </div>
             )}
           </motion.div>
@@ -378,12 +389,12 @@ export const ArchivePage: React.FC = () => {
                 </>
               ) : (viewRecord.fileExtension?.match(/(png|jpg|jpeg|gif|webp)/i) || viewRecord.type?.match(/(png|jpg|jpeg|gif|webp)/i) || viewRecord.name?.match(/\.(png|jpg|jpeg|gif|webp)$/i) || viewRecord.fileName?.match(/\.(png|jpg|jpeg|gif|webp)$/i) || viewRecord.category === 'Imaging') ? (
                 <div className="w-full h-[500px] mb-8 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center p-4">
-                  <img src={viewRecord.appwriteViewUrl} alt="Document" className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
+                  <img src={viewRecord.appwriteViewUrl || viewRecord.fileData || viewRecord.fileUrl} alt="Document" className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
                 </div>
-              ) : (viewRecord.appwriteViewUrl) ? (
+              ) : (viewRecord.appwriteViewUrl || viewRecord.fileData || viewRecord.fileUrl) ? (
                 <div className="w-full h-[500px] mb-8 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
                   <iframe 
-                    src={viewRecord.appwriteViewUrl}
+                    src={viewRecord.appwriteViewUrl || viewRecord.fileData || viewRecord.fileUrl}
                     className="w-full h-full border-0"
                     title="Document Viewer"
                   />

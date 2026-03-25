@@ -10,11 +10,12 @@ import {
   VideoOff,
   MessageSquare,
   Activity,
-  Zap
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { ChatWidget } from '../components/ChatWidget';
@@ -194,6 +195,17 @@ export const DoctorConsultations: React.FC = () => {
                     {c.messages?.length > 0 && c.messages[c.messages.length - 1].senderId !== auth.currentUser?.uid && !c.messages[c.messages.length - 1].read && (
                       <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
                     )}
+                  </button>
+                  <button 
+                    onClick={async () => {
+                       if(window.confirm(`Mark chat with ${patientNames[c.patientId] || c.patientName} as completed?`)) {
+                          await updateDoc(doc(db, 'consultations', c.id), { status: 'Completed' });
+                       }
+                    }}
+                    className="p-3 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all shadow-sm border border-slate-100"
+                    title="Mark as Completed"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>

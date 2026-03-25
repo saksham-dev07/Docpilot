@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Activity,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
@@ -142,9 +143,9 @@ export const OPDManager: React.FC = () => {
         <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
           <div className="flex items-center gap-6">
             <h2 className="text-xl font-display font-bold text-slate-900">Patient Queue</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-wider">
-              <div className="w-1.5 h-1.5 bg-brand-600 rounded-full animate-pulse" />
-              Live Updates
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+              <div className="w-2 h-2 bg-brand-600 rounded-full animate-ping" />
+              Live Sync Active
             </div>
           </div>
           <div className="relative group w-80">
@@ -172,11 +173,22 @@ export const OPDManager: React.FC = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-500">Loading queue...</td>
+                  <td colSpan={6} className="px-8 py-32 text-center text-brand-600">
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                      <p className="font-bold text-slate-600 text-lg">Syncing Live Queue...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : queue.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-500">No patients in queue for today.</td>
+                  <td colSpan={6} className="px-8 py-32 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Users className="w-16 h-16 mb-4 text-slate-300" />
+                      <h3 className="text-xl font-bold text-slate-700 mb-2">Queue is Empty</h3>
+                      <p className="text-slate-500 max-w-sm">There are no patients currently waiting in your outpatient department queue today.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : queue.map((patient) => (
                 <tr key={patient.id} className="hover:bg-slate-50/50 transition-colors group">
