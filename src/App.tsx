@@ -18,7 +18,6 @@ import { DocumentWorkflow } from './pages/DocumentWorkflow';
 import { ArchivePage } from './pages/ArchivePage';
 import { PatientArchive } from './pages/PatientArchive';
 import { AnalyticsPage } from './pages/AnalyticsPage';
-import { BillingPage } from './pages/BillingPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PatientSettings } from './pages/PatientSettings';
 import { SolutionsPage } from './pages/SolutionsPage';
@@ -92,7 +91,6 @@ function App() {
         <Route path="/opd" element={<ProtectedRoute allowedRole="doctor"><OPDManager /></ProtectedRoute>} />
         <Route path="/workflow" element={<ProtectedRoute allowedRole="doctor"><DocumentWorkflow /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute allowedRole="doctor"><AnalyticsPage /></ProtectedRoute>} />
-        <Route path="/billing" element={<ProtectedRoute allowedRole="doctor"><BillingPage /></ProtectedRoute>} />
         <Route path="/book" element={<ProtectedRoute allowedRole="patient"><BookAppointment /></ProtectedRoute>} />
 
         {/* Fallback */}

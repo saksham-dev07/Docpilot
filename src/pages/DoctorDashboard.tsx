@@ -170,7 +170,8 @@ export const DoctorDashboard: React.FC = () => {
   };
 
   const handleDownloadReport = () => {
-    const text = `AetherMed AI - Daily Practice Report\nDate: ${new Date().toLocaleDateString()}\nDoctor: ${userName}\nTotal Daily Appointments: ${appointments.length}\n\nQueue List:\n` + 
+    const userName = auth.currentUser?.displayName || 'Doctor';
+    const text = `DocPilot - Daily Practice Report\nDate: ${new Date().toLocaleDateString()}\nDoctor: ${userName}\nTotal Daily Appointments: ${appointments.length}\n\nQueue List:\n` + 
       appointments.map(a => `- ${a.time}: ${a.patientName} (${a.type}) - [${a.status || 'Scheduled'}]`).join('\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);

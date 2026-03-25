@@ -117,6 +117,7 @@ export const BookAppointment: React.FC = () => {
            status: 'Scheduled',
            type: 'In-person',
            priority: 'Medium',
+           amount: Number(selectedDoctor.consultationFee || 500),
            createdAt: new Date().toISOString()
          }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'appointments'));
       } else {
@@ -130,6 +131,7 @@ export const BookAppointment: React.FC = () => {
            status: 'Scheduled',
            specialty: selectedDoctor.specialty || 'General Physician',
            rescheduleCount: isReschedule ? rescheduleCount + 1 : 0,
+           amount: Number(selectedDoctor.consultationFee || 500),
            createdAt: new Date().toISOString()
          }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'consultations'));
 
@@ -209,10 +211,12 @@ export const BookAppointment: React.FC = () => {
                       <h4 className="font-bold text-slate-900 truncate">{doc.firstName} {doc.lastName}</h4>
                       <p className="text-xs text-slate-500 mb-2">{doc.specialty || 'General Physician'}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100">
-                          <Clock className="w-3 h-3" />
-                          <span className="text-[10px] font-black uppercase tracking-wider">{doc.experience || '5+ Years'}</span>
-                        </div>
+                        {doc.experience && (
+                          <div className="flex items-center gap-1 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-[10px] font-black uppercase tracking-wider">{doc.experience}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-1 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100">
                           <Info className="w-3 h-3" />
                           <span className="text-[10px] font-black uppercase tracking-wider">₹{doc.consultationFee || '500'} Fee</span>

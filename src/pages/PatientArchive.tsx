@@ -513,67 +513,115 @@ export const PatientArchive: React.FC = () => {
             </div>
             
             <div className="p-8 space-y-6">
-              {fileViewUrl ? (
-                <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden border-2 border-slate-100 bg-slate-50 flex flex-col items-center justify-center relative group">
-                  {viewRecord?.fileName?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                    <img 
-                      src={fileViewUrl} 
-                      alt="Document Preview" 
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <iframe 
-                      src={fileViewUrl} 
-                      className="w-full h-full"
-                      title="Document Preview"
-                    />
+              {viewRecord.type === 'Online Prescription' ? (
+                <>
+                  <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 flex items-center justify-between">
+                     <div>
+                       <p className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Prescribing Doctor</p>
+                       <p className="font-bold text-slate-900 text-lg">Dr. {viewRecord.doctorName}</p>
+                     </div>
+                     <div className="text-right">
+                       <p className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Date</p>
+                       <p className="font-bold text-slate-900 text-lg">{viewRecord.date}</p>
+                     </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Activity className="w-5 h-5 text-brand-600" />
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-900">Rx Details</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {viewRecord.prescriptionData?.medicines?.map((med: any, idx: number) => (
+                        <div key={idx} className="p-4 bg-white rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                          <div>
+                            <p className="font-bold text-slate-900 text-lg mb-1">{med.name}</p>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-200">
+                                💊 Dosage: <span className="text-slate-900">{med.dosage}</span>
+                              </span>
+                              <span className="px-2.5 py-1 bg-brand-50 text-brand-600 rounded-lg text-xs font-bold border border-brand-100">
+                                ⏱️ Frequency: <span className="text-brand-900">{med.frequency}</span>
+                              </span>
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
+                                📅 Duration: <span className="text-emerald-900">{med.duration}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {viewRecord.prescriptionData?.notes && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 mb-2">Instructions</h4>
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium bg-amber-50 rounded-xl p-4 border border-amber-100/50">
+                        {viewRecord.prescriptionData.notes}
+                      </p>
+                    </div>
                   )}
-                  <a 
-                    href={fileViewUrl} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md"
-                  >
-                    Open Full Screen Externally
-                  </a>
-                </div>
-              ) : null}
 
-              <div className="flex items-center gap-4 p-5 bg-brand-50 rounded-3xl border border-brand-100">
-                <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 shrink-0">
-                  <Activity className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-brand-400 uppercase tracking-wider mb-1">Document Name</p>
-                  <p className="font-bold text-brand-900 text-lg">{viewRecord.name || viewRecord.title}</p>
-                </div>
-              </div>
+                  <div className="pt-2 border-t border-slate-100 flex justify-end">
+                    <button onClick={() => handleDownload(viewRecord)} className="mr-auto text-brand-600 font-bold text-sm px-4 py-3 hover:bg-brand-50 rounded-xl transition-colors">Download TXT</button>
+                    <button onClick={() => setViewRecord(null)} className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all">Close</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {(viewRecord.fileExtension?.match(/(png|jpg|jpeg|gif|webp)/i) || viewRecord.type?.match(/(png|jpg|jpeg|gif|webp)/i) || viewRecord.name?.match(/\.(png|jpg|jpeg|gif|webp)$/i) || viewRecord.category === 'Imaging') ? (
+                    <div className="w-full h-[300px] sm:h-[400px] border-2 border-slate-100 bg-slate-50 flex flex-col items-center justify-center relative group rounded-3xl mb-6">
+                      <img src={fileViewUrl || viewRecord.appwriteViewUrl} alt="Document Preview" className="w-full h-full object-contain p-2 rounded-3xl" />
+                      <a href={fileViewUrl || viewRecord.appwriteViewUrl} target="_blank" rel="noreferrer" className="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md">
+                        Open Externally
+                      </a>
+                    </div>
+                  ) : (fileViewUrl || viewRecord.appwriteViewUrl) ? (
+                    <div className="w-full h-[300px] sm:h-[400px] rounded-3xl overflow-hidden border-2 border-slate-100 bg-slate-50 flex flex-col items-center justify-center relative group mb-6">
+                      <iframe src={fileViewUrl || viewRecord.appwriteViewUrl} className="w-full h-full border-0" title="Document Viewer" />
+                      <a href={fileViewUrl || viewRecord.appwriteViewUrl} target="_blank" rel="noreferrer" className="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md">
+                        Open Externally
+                      </a>
+                    </div>
+                  ) : null}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-slate-50 rounded-3xl">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Date</p>
-                  <p className="font-bold text-slate-900">{viewRecord.date}</p>
-                </div>
-                <div className="p-5 bg-slate-50 rounded-3xl">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Category</p>
-                  <p className="font-bold text-slate-900">{viewRecord.type}</p>
-                </div>
-              </div>
+                  <div className="flex items-center gap-4 p-5 bg-brand-50 rounded-3xl border border-brand-100 mt-6">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 shrink-0">
+                      <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-brand-400 uppercase tracking-wider mb-1">Document Name</p>
+                      <p className="font-bold text-brand-900 text-lg">{viewRecord.name || viewRecord.title}</p>
+                    </div>
+                  </div>
 
-              <div className="p-5 bg-slate-50 rounded-3xl">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Added By</p>
-                <p className="font-bold text-slate-900">{viewRecord.doctorName || viewRecord.doctor || 'Patient Upload'}</p>
-              </div>
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="p-5 bg-slate-50 rounded-3xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                      <p className="font-bold text-slate-900">{viewRecord.date}</p>
+                    </div>
+                    <div className="p-5 bg-slate-50 rounded-3xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                      <p className="font-bold text-slate-900">{viewRecord.type}</p>
+                    </div>
+                  </div>
 
-              <div className="pt-4 flex gap-4">
-                <button 
-                  onClick={() => handleDownload(viewRecord)}
-                  className="flex-[2] py-4 rounded-2xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center gap-2"
-                >
-                  Download File
-                  <Download className="w-5 h-5" />
-                </button>
-              </div>
+                  <div className="p-5 bg-slate-50 rounded-3xl mt-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Added By</p>
+                    <p className="font-bold text-slate-900">{viewRecord.doctorName || viewRecord.doctor || 'Patient Upload'}</p>
+                  </div>
+
+                  <div className="pt-6 flex gap-4">
+                    <button 
+                      onClick={() => handleDownload(viewRecord)}
+                      className="flex-[2] py-4 rounded-2xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center gap-2"
+                    >
+                      Download File
+                      <Download className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

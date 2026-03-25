@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const AuthLayout: React.FC<{ children: React.ReactNode; title: string; subtitle: string }> = ({ children, title, subtitle }) => {
   return (
-    <div className="min-h-screen flex bg-white relative">
+    <div className="h-screen flex bg-white relative overflow-hidden">
       {/* Exit Button */}
       <Link 
         to="/" 
@@ -16,7 +16,7 @@ export const AuthLayout: React.FC<{ children: React.ReactNode; title: string; su
       </Link>
 
       {/* Left Side - Visual */}
-      <div className="hidden lg:flex w-1/2 bg-brand-600 relative overflow-hidden items-center justify-center p-20">
+      <div className="hidden lg:flex w-1/2 h-full bg-brand-600 relative overflow-hidden items-center justify-center p-20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent)]" />
         <div className="relative z-10 text-white max-w-lg">
           <motion.div
@@ -25,7 +25,7 @@ export const AuthLayout: React.FC<{ children: React.ReactNode; title: string; su
             transition={{ duration: 0.6 }}
           >
             <div className="w-16 h-16 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-10">
-              <span className="font-display font-black text-3xl">A</span>
+              <span className="font-display font-black text-3xl">D</span>
             </div>
             <h1 className="text-6xl font-display font-extrabold leading-tight mb-8">
               The Future of <span className="text-brand-200 italic">Clinical Intelligence</span>
@@ -52,9 +52,9 @@ export const AuthLayout: React.FC<{ children: React.ReactNode; title: string; su
         <div className="absolute top-20 -left-20 w-64 h-64 bg-brand-700 rounded-full blur-3xl opacity-50" />
       </div>
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-20">
-        <div className="w-full max-w-md">
+    {/* Right Side - Form */}
+      <div className="w-full lg:w-1/2 h-full overflow-y-auto flex flex-col p-8 sm:p-20 relative">
+        <div className="w-full max-w-md m-auto">
           <div className="mb-12">
             <motion.div
               initial={{ opacity: 0, x: -20 }}

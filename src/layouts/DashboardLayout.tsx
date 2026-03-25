@@ -29,7 +29,6 @@ const doctorSidebarItems = [
   { icon: FileText, label: 'Workflow', path: '/workflow' },
   { icon: Archive, label: 'Archive', path: '/doctor/archive' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: CreditCard, label: 'Billing', path: '/billing' },
   { icon: Settings, label: 'Settings', path: '/doctor/settings' },
 ];
 
@@ -45,7 +44,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const location = useLocation();
   const navigate = useNavigate();
   const isDoctorPath = location.pathname.startsWith('/doctor') || 
-                       ['/opd', '/workflow', '/analytics', '/billing'].includes(location.pathname);
+                       ['/opd', '/workflow', '/analytics'].includes(location.pathname);
   const [userName, setUserName] = useState('User');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userSubtext, setUserSubtext] = useState('');
@@ -152,10 +151,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       <aside className="w-72 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen">
         <div className="p-8">
           <Link to={isDoctorPath ? '/doctor' : '/patient'} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
-              <span className="font-display font-extrabold text-xl">A</span>
+            <div className="w-8 h-8 flex items-center justify-center bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/20">
+              <span className="font-display font-bold text-lg">D</span>
             </div>
-            <span className="font-display font-bold text-xl tracking-tight text-slate-900">AetherMed AI</span>
+            <span className="font-display font-bold text-xl tracking-tight text-slate-900">DocPilot</span>
           </Link>
         </div>
 
@@ -221,7 +220,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <div className="relative group z-50">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
               <input 
-                type="text" 
+                type="text"
+                name="global-search"
+                autoComplete="off"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isDoctorPath ? "Search patients, clinic records, or insights..." : "Search doctors, hospitals, or documents..."}
@@ -275,7 +276,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   {!notificationsCleared ? [
                     { title: isDoctorPath ? 'New Patient Assigned' : 'Appointment Reminder', desc: isDoctorPath ? 'Saksham Agarwal was assigned to your OPD.' : 'Your consultation with Dr. Agarwal is scheduled for 2:00 PM.', time: '1h ago', dot: 'bg-brand-500' },
                     { title: 'New Lab Report', desc: 'Secure blood test results are available.', time: '5h ago', dot: 'bg-emerald-500' },
-                    { title: 'System Warning', desc: 'AetherMed platform background tracking updated.', time: '1d ago', dot: 'bg-slate-400' }
+                    { title: 'System Warning', desc: 'DocPilot platform background tracking updated.', time: '1d ago', dot: 'bg-slate-400' }
                   ].map((n, i) => (
                     <div key={i} className="p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex gap-4">
                       <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${n.dot}`} />

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 
 export const OPDManager: React.FC = () => {
@@ -26,6 +26,7 @@ export const OPDManager: React.FC = () => {
     { label: 'Avg. Wait Time', value: '24m', icon: Activity, color: 'text-emerald-600 bg-emerald-50' },
     { label: 'Critical Cases', value: '0', icon: AlertCircle, color: 'text-rose-600 bg-rose-50' },
   ]);
+  const [patientNames, setPatientNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -59,6 +60,19 @@ export const OPDManager: React.FC = () => {
         { ...prev[3], value: critical.toString() }
       ]);
       
+      const newUids = new Set(appointmentsData.map((a: any) => a.patientId).filter(Boolean));
+      newUids.forEach(async (uidRaw) => {
+        const uid = uidRaw as string;
+        if (!patientNames[uid]) {
+          try {
+            const snap = await getDoc(doc(db, 'users', uid));
+            if (snap.exists() && snap.data().firstName) {
+              setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+            }
+          } catch(e) {}
+        }
+      });
+
       setLoading(false);
     });
 
@@ -168,12 +182,14 @@ export const OPDManager: React.FC = () => {
                 <tr key={patient.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-lg">
-                        {patient.patientName?.charAt(0) || 'P'}
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-all font-display font-black text-xl">
+                        {(patientNames[patient.patientId] || patient.patientName)?.charAt(0) || 'P'}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{patient.patientName}</p>
-                        <p className="text-xs text-slate-500">ID: {patient.patientId?.slice(-5)}</p>
+                        <p className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                          {patientNames[patient.patientId] || patient.patientName}
+                        </p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1">ID: {patient.patientId?.slice(-5)}</p>
                       </div>
                     </div>
                   </td>

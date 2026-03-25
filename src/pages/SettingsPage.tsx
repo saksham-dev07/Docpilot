@@ -21,15 +21,13 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, getDocs, collection, query, where } from 'firebase/firestore';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile Information', icon: User, desc: 'Update your personal details and professional bio.' },
   { id: 'security', label: 'Security & Password', icon: Lock, desc: 'Manage your password, 2FA, and login sessions.' },
   { id: 'notifications', label: 'Notification Settings', icon: Bell, desc: 'Configure how you receive alerts and reminders.' },
   { id: 'privacy', label: 'Privacy & Compliance', icon: Shield, desc: 'Manage data sharing and HIPAA compliance settings.' },
-  { id: 'integrations', label: 'Connected Apps', icon: Globe, desc: 'Manage connections to EMRs, labs, and pharmacies.' },
-  { id: 'storage', label: 'Data & Storage', icon: Database, desc: 'Manage your cloud storage and archive preferences.' },
   { id: 'support', label: 'Help & Support', icon: HelpCircle, desc: 'Get assistance or report issues with the platform.' },
 ];
 
@@ -98,6 +96,41 @@ export const SettingsPage: React.FC = () => {
       alert("Failed to update profile.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleNotification = async (key: string) => {
+    if (!auth.currentUser) return;
+    const currentPrefs = userData?.notifications || {};
+    const updated = { ...currentPrefs, [key]: !currentPrefs[key] };
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), { notifications: updated });
+    setUserData({ ...userData, notifications: updated });
+  };
+
+  const handleTogglePrivacy = async () => {
+    if (!auth.currentUser) return;
+    const newState = !(userData?.shareData ?? true);
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), { shareData: newState });
+    setUserData({ ...userData, shareData: newState });
+  };
+
+  const handleExportData = async () => {
+    if (!auth.currentUser) return;
+    try {
+      const recordsSnapshot = await getDocs(query(collection(db, 'appointments'), where('doctorId', '==', auth.currentUser.uid)));
+      const records = recordsSnapshot.docs.map(d => d.data());
+      const exportData = { profile: userData, appointments: records };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `docpilot_professional_export_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Failed to export data", err);
+      alert("Failed to export data.");
     }
   };
 
@@ -241,7 +274,7 @@ export const SettingsPage: React.FC = () => {
                         type="tel" 
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="+91 XXXXX XXXXX"
                         className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
                       />
                     </div>
@@ -254,7 +287,7 @@ export const SettingsPage: React.FC = () => {
                         type="text" 
                         value={formData.location}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        placeholder="San Francisco, CA"
+                        placeholder="Mumbai, MH"
                         className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
                       />
                     </div>
@@ -344,33 +377,42 @@ export const SettingsPage: React.FC = () => {
             >
               <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
                 <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Password Management</h3>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Current Password</label>
-                    <input 
-                      type="password" 
-                      placeholder="••••••••••••"
-                      className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
-                    />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                    {/* Hidden Honey Pot for Chrome Autofill Traversal bug */}
+                    <input type="email" name="email" autoComplete="username" className="hidden" aria-hidden="true" value={userData?.email || auth.currentUser?.email || ''} readOnly />
+                    
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">New Password</label>
+                      <label className="text-sm font-bold text-slate-700 ml-1">Current Password</label>
                       <input 
                         type="password" 
+                        name="currentPassword"
+                        autoComplete="current-password"
                         placeholder="••••••••••••"
                         className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Confirm New Password</label>
-                      <input 
-                        type="password" 
-                        placeholder="••••••••••••"
-                        className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
-                      />
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 ml-1">New Password</label>
+                        <input 
+                          type="password" 
+                          name="newPassword"
+                          autoComplete="new-password"
+                          placeholder="••••••••••••"
+                          className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Confirm New Password</label>
+                        <input 
+                          type="password" 
+                          name="confirmPassword"
+                          autoComplete="new-password"
+                          placeholder="••••••••••••"
+                          className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
+                        />
+                      </div>
                     </div>
-                  </div>
                   <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all">
                     Update Password
                   </button>
@@ -388,6 +430,81 @@ export const SettingsPage: React.FC = () => {
                 <button className="px-8 py-4 bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-600/20 hover:bg-rose-700 transition-all">
                   Enable 2FA
                 </button>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
+                <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Notification Preferences</h3>
+                <div className="space-y-6">
+                  {['Email Updates', 'SMS Text Alerts', 'Push Notifications', 'Appointment Reminders'].map((pref, i) => (
+                    <div key={i} className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                      <div>
+                        <h4 className="font-bold text-slate-900">{pref}</h4>
+                        <p className="text-sm text-slate-500">Receive important alerts securely via {pref.toLowerCase()}.</p>
+                      </div>
+                      <button 
+                        onClick={() => handleToggleNotification(pref)}
+                        className={cn("w-14 h-8 rounded-full relative transition-colors shadow-inner", userData?.notifications?.[pref] ? "bg-brand-600" : "bg-slate-300")}
+                      >
+                        <div className={cn("absolute top-1 w-6 h-6 bg-white rounded-full shadow-sm transition-all", userData?.notifications?.[pref] ? "right-1" : "left-1")} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'privacy' && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
+                <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Privacy & Compliance</h3>
+                <div className="space-y-6">
+                  <div className="p-6 bg-brand-50 border border-brand-100 rounded-3xl">
+                    <h4 className="font-bold text-brand-900 mb-2">HIPAA Compliance Active</h4>
+                    <p className="text-sm text-brand-700">Your practice data is strictly encrypted and protected under healthcare regulations.</p>
+                  </div>
+                  <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div>
+                      <h4 className="font-bold text-slate-900">Share Clinical Analytics</h4>
+                      <p className="text-sm text-slate-500">Automatically share anonymous practice metrics with the central administrative board.</p>
+                    </div>
+                    <button 
+                      onClick={handleTogglePrivacy}
+                      className={cn("w-14 h-8 rounded-full relative transition-colors shadow-inner", (userData?.shareData ?? true) ? "bg-brand-600" : "bg-slate-300")}
+                    >
+                      <div className={cn("absolute top-1 w-6 h-6 bg-white rounded-full shadow-sm transition-all", (userData?.shareData ?? true) ? "right-1" : "left-1")} />
+                    </button>
+                  </div>
+                  <button onClick={handleExportData} className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all">
+                    Request Data Export
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'support' && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10 text-center">
+                <div className="w-20 h-20 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <HelpCircle className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">We're here to help!</h3>
+                <p className="text-slate-500 mb-8 max-w-md mx-auto">Having trouble with your practice portal? Our support team is available 24/7 to assist you.</p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <a href="mailto:support@docpilot.com" className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-brand-700 transition-all">
+                    <Mail className="w-5 h-5" />
+                    Email Support
+                  </a>
+                  <a href="#" className="px-8 py-4 bg-slate-50 text-slate-700 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-all border border-slate-200">
+                    <AlertCircle className="w-5 h-5" />
+                    View FAQs
+                  </a>
+                </div>
               </div>
             </motion.div>
           )}

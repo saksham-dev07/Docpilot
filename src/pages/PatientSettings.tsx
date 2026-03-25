@@ -29,7 +29,6 @@ const settingsSections = [
   { id: 'security', label: 'Security & Password', icon: Lock, desc: 'Manage your password, 2FA, and login sessions.' },
   { id: 'notifications', label: 'Notification Settings', icon: Bell, desc: 'Configure how you receive alerts and reminders.' },
   { id: 'privacy', label: 'Privacy & Data', icon: Shield, desc: 'Manage data sharing and HIPAA compliance settings.' },
-  { id: 'storage', label: 'Data & Storage', icon: Database, desc: 'Manage your cloud storage and archive preferences.' },
   { id: 'support', label: 'Help & Support', icon: HelpCircle, desc: 'Get assistance or report issues with the platform.' },
 ];
 
@@ -585,33 +584,6 @@ export const PatientSettings: React.FC = () => {
                   </div>
                   <button onClick={handleExportData} className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all">
                     Request Data Export
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'storage' && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-              <div className="bg-slate-900 text-white rounded-5xl shadow-sm p-10">
-                <h3 className="text-2xl font-display font-bold mb-8">Data & Storage</h3>
-                <div className="space-y-2 mb-8">
-                  <div className="flex justify-between text-sm font-bold text-slate-400 mb-2">
-                    <span>{totalStorageUsed} Used</span>
-                    <span>50 GB Total</span>
-                  </div>
-                  <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                    <div className="h-full bg-brand-500" style={{ width: storagePercentage }} />
-                  </div>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <button onClick={handleClearCache} className="p-6 bg-slate-800 rounded-3xl text-left hover:bg-slate-700 transition-colors border border-slate-700">
-                    <h4 className="font-bold mb-1">Clear Cache</h4>
-                    <p className="text-xs text-slate-400">Free up local device memory.</p>
-                  </button>
-                  <button className="p-6 bg-slate-800 rounded-3xl text-left hover:bg-slate-700 transition-colors border border-slate-700">
-                    <h4 className="font-bold mb-1">Upgrade Tier</h4>
-                    <p className="text-xs text-slate-400">Unlock 1TB of medical archiving.</p>
                   </button>
                 </div>
               </div>

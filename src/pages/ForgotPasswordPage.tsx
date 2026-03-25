@@ -25,7 +25,7 @@ export const ForgotPasswordPage: React.FC = () => {
               <input 
                 type="email" 
                 required
-                placeholder="dr.chen@aethermed.ai" 
+                placeholder="dr.sharma@hospital.in"
                 className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
               />
             </div>
@@ -51,7 +51,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <div className="space-y-2">
             <h3 className="text-2xl font-bold text-slate-900">Check your email</h3>
             <p className="text-slate-500 leading-relaxed">
-              We've sent a password reset link to <span className="font-bold text-slate-700">dr.chen@aethermed.ai</span>. Please check your inbox and follow the instructions.
+              We've sent a password reset link to <span className="font-bold text-slate-700">dr.sharma@hospital.in</span>. Please check your inbox and follow the instructions.
             </p>
           </div>
           <Link 

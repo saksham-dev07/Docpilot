@@ -165,6 +165,10 @@ service cloud.firestore {
                       (request.auth.uid == resource.data.doctorId || request.auth.uid == resource.data.patientId);
     }
 
+    match /medical_records/{recordId} {
+      allow read, write: if isDoctor();
+    }
+
     match /records/{recordId} {
       allow read: if isAuthenticated() && (request.auth.uid == resource.data.patientId || isDoctor());
       allow create: if isAuthenticated() && isValidRecord(request.resource.data) && 

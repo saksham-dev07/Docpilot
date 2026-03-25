@@ -17,9 +17,11 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, getDocs, getDoc, doc } from 'firebase/firestore';
 import { ID } from 'appwrite';
 import { appwriteStorage, APPWRITE_BUCKET_ID } from '../lib/appwrite';
+import { AnimatePresence } from 'motion/react';
+import { X, Plus, Trash2 } from 'lucide-react';
 
 export const DocumentWorkflow: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -28,6 +30,17 @@ export const DocumentWorkflow: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'All' | 'Reports' | 'Imaging'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [patientsList, setPatientsList] = useState<{id: string, name: string}[]>([]);
+  const [doctorName, setDoctorName] = useState('Doctor');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [viewingPrescription, setViewingPrescription] = useState<any | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  
+  const [medicines, setMedicines] = useState([{ name: '', dosage: '', frequency: '', duration: '' }]);
+  const [prescriptionNotes, setPrescriptionNotes] = useState('');
+  const [patientNamesCache, setPatientNamesCache] = useState<Record<string, string>>({});
   const [stats, setStats] = useState([
     { title: 'Pending Review', count: '0', icon: Clock, color: 'text-amber-600 bg-amber-50' },
     { title: 'Verified Reports', count: '0', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
@@ -38,9 +51,42 @@ export const DocumentWorkflow: React.FC = () => {
     if (!auth.currentUser) return;
 
     const q = query(
-      collection(db, 'medical_records'),
+      collection(db, 'records'),
       where('doctorId', '==', auth.currentUser.uid)
     );
+
+    // Fetch patients from appointments securely pulling exact User names
+    const aptsQuery = query(collection(db, 'appointments'), where('doctorId', '==', auth.currentUser.uid));
+    getDocs(aptsQuery).then(async snap => {
+      const pUids = new Set<string>();
+      let dName = 'Doctor';
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.doctorName) dName = data.doctorName;
+        if (data.patientId) pUids.add(data.patientId);
+      });
+      setDoctorName(dName);
+
+      const pList: {id: string, name: string}[] = [];
+      const nameCache: Record<string, string> = {};
+      
+      for (const uid of Array.from(pUids)) {
+        try {
+          const uSnap = await getDoc(doc(db, 'users', uid));
+          if (uSnap.exists() && uSnap.data().firstName) {
+            const realName = `${uSnap.data().firstName} ${uSnap.data().lastName}`;
+            pList.push({ id: uid, name: realName });
+            nameCache[uid] = realName;
+          } else {
+            pList.push({ id: uid, name: 'Patient' });
+          }
+        } catch (e) {
+          pList.push({ id: uid, name: 'Patient' });
+        }
+      }
+      setPatientsList(pList);
+      setPatientNamesCache(nameCache);
+    }).catch(console.error);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const recordsData = snapshot.docs.map(doc => ({
@@ -70,6 +116,11 @@ export const DocumentWorkflow: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
     
+    if (!selectedPatientId) {
+      alert("Please select a patient before uploading.");
+      return;
+    }
+    
     if (file.size > 20 * 1024 * 1024) {
       alert("File is too large securely bypassing 20MB limit.");
       return;
@@ -83,26 +134,108 @@ export const DocumentWorkflow: React.FC = () => {
       
       const fileExt = file.name.split('.').pop()?.toUpperCase() || 'DOC';
       const isImg = ['JPG', 'JPEG', 'PNG', 'WEBP', 'DICOM'].includes(fileExt);
+      const pName = patientsList.find(p => p.id === selectedPatientId)?.name || 'Unknown Patient';
 
-      await addDoc(collection(db, 'medical_records'), {
-        name: file.name,
-        type: fileExt,
+      const recordPayload = {
+        name: `Prescription - ${new Date().toLocaleDateString('en-GB')}`,
+        type: 'Handwritten Prescription',
+        fileExtension: fileExt,
         category: isImg ? 'Imaging' : 'Reports',
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        patientName: 'Unassigned',
-        status: 'Pending Review',
+        patientName: pName,
+        patientId: selectedPatientId,
         doctorId: auth.currentUser.uid,
+        doctorName: doctorName || 'Doctor',
         appwriteFileId: response.$id,
         appwriteViewUrl: viewUrl,
-        appwriteDownloadUrl: downloadUrl
-      });
-    } catch(err) {
+        appwriteDownloadUrl: downloadUrl,
+        createdAt: new Date().toISOString(),
+        status: 'Verified'
+      };
+
+      try {
+        await addDoc(collection(db, 'records'), recordPayload);
+      } catch (e2: any) {
+        console.error("Error adding to records:", e2);
+        alert("Failed to securely connect to Patient bucket: " + e2.message);
+        throw e2;
+      }
+      setShowUploadModal(false);
+    } catch(err: any) {
       console.error(err);
-      alert('Upload failed safely connecting endpoints.');
+      alert('Upload failed: ' + err.message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCreatePrescription = async () => {
+    if (!auth.currentUser) return;
+    if (!selectedPatientId || medicines.length === 0 || !medicines[0].name) {
+      alert("Please select a patient and add at least one medicine.");
+      return;
+    }
+
+    // Validate frequency format (x-x-x)
+    for (const med of medicines) {
+      if (!/^\d-\d-\d$/.test(med.frequency)) {
+        alert(`Invalid frequency format for ${med.name || 'medicine'}. Please use the exact format X-X-X (e.g., 1-0-1 or 1-1-1).`);
+        return;
+      }
+    }
+
+    setIsUploading(true);
+    try {
+      const pName = patientsList.find(p => p.id === selectedPatientId)?.name || 'Unknown Patient';
+      
+      // Auto Append 'mg' to dosage
+      const formattedMedicines = medicines.map(med => {
+        let cleanDosage = med.dosage.trim();
+        // Remove trailing "mg" or " mg" if user accidentally typed it so we don't duplicate
+        cleanDosage = cleanDosage.replace(/\s*mg$/i, '');
+        return {
+          ...med,
+          dosage: cleanDosage ? `${cleanDosage}mg` : ''
+        };
+      });
+
+      const prescriptionData = {
+        medicines: formattedMedicines,
+        notes: prescriptionNotes
+      };
+      
+      const recordPayload = {
+        name: `Prescription - ${new Date().toLocaleDateString('en-GB')}`,
+        type: 'Online Prescription',
+        category: 'Reports',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        patientName: pName,
+        patientId: selectedPatientId,
+        doctorId: auth.currentUser.uid,
+        doctorName: doctorName || 'Doctor',
+        prescriptionData,
+        createdAt: new Date().toISOString(),
+        status: 'Verified'
+      };
+
+      try {
+        await addDoc(collection(db, 'records'), recordPayload);
+      } catch (e2: any) {
+        console.error("Error adding to records:", e2);
+        alert("Failed to securely generate Online Prescription schema: " + e2.message);
+        throw e2;
+      }
+      
+      setShowPrescriptionModal(false);
+      setMedicines([{ name: '', dosage: '', frequency: '', duration: '' }]);
+      setPrescriptionNotes('');
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to emit prescription securely: " + e.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -129,11 +262,11 @@ export const DocumentWorkflow: React.FC = () => {
         </motion.div>
         <div className="flex gap-3">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2 disabled:opacity-50">
-            {isUploading ? <Activity className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {isUploading ? 'Uploading...' : 'Upload Document'}
+          <button onClick={() => setShowUploadModal(true)} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Upload Document
           </button>
-          <button className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
+          <button onClick={() => setShowPrescriptionModal(true)} className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
             <FilePlus className="w-4 h-4" />
             Create New
           </button>
@@ -228,7 +361,7 @@ export const DocumentWorkflow: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <p className="font-bold text-slate-900 text-sm">{doc.patientName}</p>
+                    <p className="font-bold text-slate-900 text-sm">{(doc.patientId && patientNamesCache[doc.patientId]) ? patientNamesCache[doc.patientId] : doc.patientName}</p>
                   </td>
                   <td className="px-8 py-6">
                     <p className="font-bold text-slate-900 text-sm">{doc.date}</p>
@@ -246,7 +379,10 @@ export const DocumentWorkflow: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => doc.appwriteViewUrl && window.open(doc.appwriteViewUrl, '_blank')} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all" title="View">
+                      <button 
+                        onClick={() => setViewingPrescription(doc)}
+                        className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="View Document"
+                      >
                         <Eye className="w-5 h-5" />
                       </button>
                       <button onClick={() => doc.appwriteDownloadUrl && window.open(doc.appwriteDownloadUrl, '_blank')} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all" title="Download">
@@ -311,6 +447,225 @@ export const DocumentWorkflow: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Upload Modal */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowUploadModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Upload Patient Document</h3>
+                <button onClick={() => setShowUploadModal(false)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4 mb-8">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Select Patient</label>
+                  <select 
+                    value={selectedPatientId} 
+                    onChange={(e) => setSelectedPatientId(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                  >
+                    <option value="">-- Choose Patient --</option>
+                    {patientsList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <button onClick={() => setShowUploadModal(false)} className="px-6 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all">Cancel</button>
+                <button 
+                  onClick={() => {
+                    if (!selectedPatientId) { alert("Select patient first"); return; }
+                    fileInputRef.current?.click();
+                  }} 
+                  disabled={isUploading || !selectedPatientId}
+                  className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-brand-500/20 shadow-lg hover:bg-brand-700 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {isUploading ? <Activity className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {isUploading ? 'Uploading...' : 'Browse & Upload'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Prescription Modal */}
+      <AnimatePresence>
+        {showPrescriptionModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowPrescriptionModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Create Online Prescription</h3>
+                <button onClick={() => setShowPrescriptionModal(false)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-6 mb-8">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Select Patient</label>
+                  <select 
+                    value={selectedPatientId} 
+                    onChange={(e) => setSelectedPatientId(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                  >
+                    <option value="">-- Choose Patient --</option>
+                    {patientsList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-bold text-slate-700">Prescribed Medicines</label>
+                    <button onClick={() => setMedicines([...medicines, { name: '', dosage: '', frequency: '', duration: '' }])} className="text-xs font-bold text-brand-600 flex items-center gap-1 hover:text-brand-700 px-3 py-1 bg-brand-50 rounded-lg transition-all">
+                      <Plus className="w-3 h-3" /> Add Medicine
+                    </button>
+                  </div>
+                  
+                  {/* Grid Headers for Context */}
+                  {medicines.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-3 mb-2">
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Medicine Name</span>
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Dosage (e.g. 500mg)</span>
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Frequency (e.g. 1-0-1)</span>
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Duration (e.g. 5 Days)</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {medicines.map((med, idx) => (
+                      <div key={idx} className="flex gap-2 items-start relative bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 w-full">
+                          <input type="text" placeholder="Medicine Name" value={med.name} onChange={(e) => { const m = [...medicines]; m[idx].name = e.target.value; setMedicines(m); }} className="w-full px-3 py-2 text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-500 transition-colors" />
+                          <input type="text" placeholder="e.g. 500mg" value={med.dosage} onChange={(e) => { const m = [...medicines]; m[idx].dosage = e.target.value; setMedicines(m); }} className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-500 transition-colors" />
+                          <input type="text" placeholder="e.g. 1-0-1" value={med.frequency} onChange={(e) => { const m = [...medicines]; m[idx].frequency = e.target.value; setMedicines(m); }} className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-500 transition-colors" />
+                          <input type="text" placeholder="e.g. 5 Days" value={med.duration} onChange={(e) => { const m = [...medicines]; m[idx].duration = e.target.value; setMedicines(m); }} className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-500 transition-colors" />
+                        </div>
+                        <button onClick={() => setMedicines(medicines.filter((_, i) => i !== idx))} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg shrink-0 transition-colors mt-0.5">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Clinical Notes & Instructions</label>
+                  <textarea 
+                    value={prescriptionNotes}
+                    onChange={(e) => setPrescriptionNotes(e.target.value)}
+                    rows={3} 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium resize-none shadow-sm" 
+                    placeholder="Enter diet restrictions, follow-up advice, etc."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <button onClick={() => setShowPrescriptionModal(false)} className="px-6 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all">Cancel</button>
+                <button onClick={handleCreatePrescription} disabled={isUploading} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm shadow-emerald-500/20 shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-50">
+                  {isUploading ? 'Generating...' : 'Issue Prescription'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Prescription Viewer Modal */}
+      <AnimatePresence>
+        {viewingPrescription && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setViewingPrescription(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-8 border-t-8 border-brand-600">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight text-left">
+                    {viewingPrescription.type === 'Online Prescription' ? 'Medical Prescription' : viewingPrescription.name || 'Document Viewer'}
+                  </h3>
+                  <p className="text-sm font-bold text-slate-500 text-left">Dr. {viewingPrescription.doctorName}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-brand-600 mb-1">{viewingPrescription.date}</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-black">ID: {viewingPrescription.id?.slice(0,8)}</p>
+                </div>
+              </div>
+              
+              <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 flex items-center justify-between">
+                 <div className="text-left">
+                   <p className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Patient Name</p>
+                   <p className="font-bold text-slate-900 text-lg">{(viewingPrescription.patientId && patientNamesCache[viewingPrescription.patientId]) ? patientNamesCache[viewingPrescription.patientId] : viewingPrescription.patientName}</p>
+                 </div>
+              </div>
+
+              {viewingPrescription.type === 'Online Prescription' ? (
+                <>
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Activity className="w-5 h-5 text-brand-600" />
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-900">Rx Details</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {viewingPrescription.prescriptionData?.medicines?.map((med: any, idx: number) => (
+                        <div key={idx} className="p-4 bg-white rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm text-left">
+                          <div>
+                            <p className="font-bold text-slate-900 text-lg mb-1">{med.name}</p>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-200">
+                                💊 Dosage: <span className="text-slate-900">{med.dosage}</span>
+                              </span>
+                              <span className="px-2.5 py-1 bg-brand-50 text-brand-600 rounded-lg text-xs font-bold border border-brand-100">
+                                ⏱️ Frequency: <span className="text-brand-900">{med.frequency}</span>
+                              </span>
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100">
+                                📅 Duration: <span className="text-emerald-900">{med.duration}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {viewingPrescription.prescriptionData?.notes && (
+                    <div className="mb-8 text-left">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 mb-2">Instructions</h4>
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium bg-amber-50 rounded-xl p-4 border border-amber-100/50">
+                        {viewingPrescription.prescriptionData.notes}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (viewingPrescription.fileExtension?.match(/(png|jpg|jpeg|gif|webp)/i) || viewingPrescription.type?.match(/(png|jpg|jpeg|gif|webp)/i) || viewingPrescription.name?.match(/\.(png|jpg|jpeg|gif|webp)$/i) || viewingPrescription.category === 'Imaging') ? (
+                <div className="w-full h-[500px] mb-8 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center p-4">
+                  <img src={viewingPrescription.appwriteViewUrl} alt="Document" className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
+                </div>
+              ) : (
+                <div className="w-full h-[500px] mb-8 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                  <iframe 
+                    src={viewingPrescription.appwriteViewUrl}
+                    className="w-full h-full border-0"
+                    title="Document Viewer"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-6 border-t border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Digitally Verified</p>
+                <button onClick={() => setViewingPrescription(null)} className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all">Close Prescription</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -184,7 +184,7 @@ export const SignupPage: React.FC = () => {
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder={role === 'doctor' ? "dr.chen@aethermed.ai" : "patient@example.com"} 
+              placeholder={role === 'doctor' ? "dr.sharma@hospital.in" : "patient@hospital.in"} 
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
             />
           </div>

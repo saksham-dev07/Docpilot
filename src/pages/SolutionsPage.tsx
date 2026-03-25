@@ -56,7 +56,7 @@ export const SolutionsPage: React.FC = () => {
             <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
               <span className="font-display font-extrabold text-xl">A</span>
             </div>
-            <span className="font-display font-bold text-xl tracking-tight text-slate-900">AetherMed AI</span>
+            <span className="font-display font-bold text-xl tracking-tight text-slate-900">DocPilot</span>
           </Link>
           <Link to="/" className="text-sm font-bold text-slate-600 hover:text-brand-600 transition-colors flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
@@ -77,7 +77,7 @@ export const SolutionsPage: React.FC = () => {
               Specialized <span className="text-brand-600">AI Solutions</span>
             </h1>
             <p className="text-xl text-slate-500 leading-relaxed mb-12">
-              AetherMed AI adapts to your specific clinical needs, providing specialized tools and intelligence for various medical fields.
+              DocPilot adapts to your specific clinical needs, providing specialized tools and intelligence for various medical fields.
             </p>
           </motion.div>
         </div>
