@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { 
   LayoutDashboard, 
@@ -47,6 +47,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                        ['/opd', '/workflow', '/analytics'].includes(location.pathname);
   const [userName, setUserName] = useState('User');
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [userSubtext, setUserSubtext] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
@@ -116,22 +117,23 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   }, [searchQuery, isDoctorPath]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserName(`${data.firstName} ${data.lastName}`);
+    let unsubscribe = () => {};
+    if (auth.currentUser) {
+      unsubscribe = onSnapshot(doc(db, 'users', auth.currentUser.uid), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserName(`${data.firstName || ''} ${data.lastName || ''}`.trim() || 'User');
           setUserRole(data.role);
+          setUserPhoto(data.photoURL || null);
           if (data.role === 'doctor') {
             setUserSubtext(data.specialty || 'Medical Professional');
           } else {
             setUserSubtext(`Patient ID: ${data.patientId || '#12024'}`);
           }
         }
-      }
-    };
-    fetchUserData();
+      });
+    }
+    return () => unsubscribe();
   }, []);
 
   const handleSignOut = async () => {
@@ -190,7 +192,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <div className="flex items-center gap-3 mb-3">
                 <div className="relative w-16 h-16 rounded-3xl overflow-hidden shadow-lg border-2 border-slate-50">
                   <img 
-                  src={isDoctorPath ? "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=100&h=100" : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100"} 
+                  src={userPhoto || (isDoctorPath ? "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=100&h=100" : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100")} 
                   alt="Profile" 
                   className="w-full h-full object-cover" 
                   referrerPolicy="no-referrer" 

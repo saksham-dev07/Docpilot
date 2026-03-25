@@ -20,9 +20,10 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const settingsSections = [
   { id: 'profile', label: 'Personal Profile', icon: User, desc: 'Update your personal details and health information.' },
@@ -41,6 +42,33 @@ export const PatientSettings: React.FC = () => {
   const [storagePercentage, setStoragePercentage] = useState("0%");
   const [authApp, setAuthApp] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    setUploadingImage(true);
+    try {
+      const uniqueFileName = `profile_images/${auth.currentUser.uid}_${Date.now()}`;
+      const storageRef = ref(storage, uniqueFileName);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, { photoURL: downloadURL });
+      
+      setUserData((prev: any) => ({ ...prev, photoURL: downloadURL }));
+      alert("Profile photo updated successfully!");
+    } catch (error) {
+      console.error("Error uploading image: ", error);
+      alert("Upload failed. Firebase Storage might be disabled or have restrictive rules.");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploadingImage(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -274,13 +302,32 @@ export const PatientSettings: React.FC = () => {
               <div className="p-10 border-b border-slate-50 bg-slate-50/30">
                 <div className="flex items-center gap-8">
                   <div className="relative group">
-                    <div className="w-24 h-24 rounded-full border-4 border-slate-50 bg-slate-100 overflow-hidden relative group">
-                      <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200" alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                        <Camera className="w-6 h-6 text-white" />
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleImageUpload} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                    <div 
+                      className="w-24 h-24 rounded-full border-4 border-slate-50 bg-slate-100 overflow-hidden relative group cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <img src={userData?.photoURL || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {uploadingImage ? (
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
                       </div>
                     </div>
-                    <button className="absolute -bottom-2 -right-2 p-3 bg-brand-600 text-white rounded-2xl shadow-lg hover:bg-brand-700 transition-all">
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }} 
+                      disabled={uploadingImage} 
+                      className="absolute -bottom-2 -right-2 p-3 bg-brand-600 text-white rounded-2xl shadow-lg hover:bg-brand-700 transition-all disabled:opacity-50"
+                    >
                       <Camera className="w-5 h-5" />
                     </button>
                   </div>
