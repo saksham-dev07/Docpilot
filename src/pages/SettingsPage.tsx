@@ -203,8 +203,11 @@ export const SettingsPage: React.FC = () => {
               <div className="p-10 border-b border-slate-50 bg-slate-50/30">
                 <div className="flex items-center gap-8">
                   <div className="relative group">
-                    <div className="w-32 h-32 rounded-5xl bg-slate-200 overflow-hidden border-4 border-white shadow-xl">
-                      <img src="https://picsum.photos/seed/doctor_profile/200/200" alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <div className="w-24 h-24 rounded-full border-4 border-slate-50 bg-slate-100 overflow-hidden relative group">
+                      <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=200&h=200" alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                        <Camera className="w-6 h-6 text-white" />
+                      </div>
                     </div>
                     <button className="absolute -bottom-2 -right-2 p-3 bg-brand-600 text-white rounded-2xl shadow-lg hover:bg-brand-700 transition-all">
                       <Camera className="w-5 h-5" />

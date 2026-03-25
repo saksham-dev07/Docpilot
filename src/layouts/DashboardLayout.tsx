@@ -188,10 +188,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         <div className="p-6 mt-auto">
           <div className="bg-slate-50 rounded-3xl p-4 mb-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                <img 
-                  src={isDoctorPath ? "https://picsum.photos/seed/doctor/100/100" : "https://picsum.photos/seed/patient/100/100"} 
-                  alt="User" 
+                <div className="relative w-16 h-16 rounded-3xl overflow-hidden shadow-lg border-2 border-slate-50">
+                  <img 
+                  src={isDoctorPath ? "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=100&h=100" : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100"} 
+                  alt="Profile" 
                   className="w-full h-full object-cover" 
                   referrerPolicy="no-referrer" 
                 />

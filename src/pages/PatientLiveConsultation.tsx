@@ -48,12 +48,11 @@ export const PatientLiveConsultation: React.FC = () => {
         <div className="flex-1 relative bg-slate-900 rounded-5xl overflow-hidden shadow-2xl shadow-slate-900/20 group">
           {/* Main Video (Patient's View of Doctor) */}
           <img 
-            src="https://picsum.photos/seed/doctor_video/1200/800" 
+            src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=1200&h=800" 
             alt="Doctor Video" 
             className="w-full h-full object-cover opacity-90"
             referrerPolicy="no-referrer"
           />
-          
           {/* Doctor Label */}
           <div className="absolute top-8 left-8 flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -61,11 +60,11 @@ export const PatientLiveConsultation: React.FC = () => {
           </div>
 
           {/* Self View (Patient) */}
-          <div className="absolute bottom-8 right-8 w-64 aspect-video bg-slate-800 rounded-3xl border-4 border-white/10 overflow-hidden shadow-2xl shadow-black/50 group-hover:scale-105 transition-transform duration-500">
-            <img 
-              src="https://picsum.photos/seed/patient_video/400/300" 
-              alt="Patient Video" 
-              className="w-full h-full object-cover"
+            <div className="absolute bottom-6 right-6 w-72 aspect-[4/3] bg-slate-800 rounded-3xl overflow-hidden border-4 border-white shadow-2xl shadow-black/50 z-10">
+              <img 
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400&h=300" 
+              alt="Self" 
+              className="w-full h-full object-cover" 
               referrerPolicy="no-referrer"
             />
             <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-bold text-white">

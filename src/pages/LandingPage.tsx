@@ -29,7 +29,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
-              <span className="font-display font-extrabold text-xl">A</span>
+              <span className="font-display font-extrabold text-xl">D</span>
             </div>
             <span className="font-display font-bold text-xl tracking-tight text-slate-900">DocPilot</span>
           </div>
@@ -95,21 +95,7 @@ export const LandingPage: React.FC = () => {
               </button>
             </div>
             
-            <div className="mt-16 flex items-center gap-8">
-              <div className="flex -space-x-4">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-slate-100 overflow-hidden">
-                    <img src={`https://picsum.photos/seed/doctor${i}/100/100`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-900">Trusted by 2,000+ Doctors</p>
-                <div className="flex gap-1 text-yellow-400">
-                  {[1, 2, 3, 4, 5].map(i => <Activity key={i} className="w-4 h-4 fill-current" />)}
-                </div>
-              </div>
-            </div>
+
           </motion.div>
 
           <motion.div
@@ -120,10 +106,9 @@ export const LandingPage: React.FC = () => {
           >
             <div className="relative z-10 bg-white p-4 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100">
               <img 
-                src="https://picsum.photos/seed/dashboard/1200/800" 
-                alt="Dashboard Preview" 
+                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=1200&h=800"
+                alt="Medical Dashboard Preview" 
                 className="rounded-[2rem] w-full h-auto shadow-inner"
-                referrerPolicy="no-referrer"
               />
             </div>
             {/* Decorative Blobs */}
@@ -313,7 +298,7 @@ export const LandingPage: React.FC = () => {
           <div className="col-span-2">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white">
-                <span className="font-display font-bold text-xl">A</span>
+                <span className="font-display font-bold text-xl">D</span>
               </div>
               <span className="font-display font-bold text-xl tracking-tight">DocPilot</span>
             </div>
@@ -331,19 +316,19 @@ export const LandingPage: React.FC = () => {
           <div>
             <h4 className="font-bold text-slate-900 mb-6">Product</h4>
             <ul className="space-y-4 text-slate-500">
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Features</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">AI Diagnostics</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">OPD Manager</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Pricing</a></li>
+              <li><Link to="/features" className="hover:text-brand-600 transition-colors">Features</Link></li>
+              <li><Link to="/ai-diagnostics" className="hover:text-brand-600 transition-colors">AI Diagnostics</Link></li>
+              <li><Link to="/opd-manager" className="hover:text-brand-600 transition-colors">OPD Manager</Link></li>
+              <li><Link to="/pricing" className="hover:text-brand-600 transition-colors">Pricing</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-bold text-slate-900 mb-6">Company</h4>
             <ul className="space-y-4 text-slate-500">
-              <li><a href="#" className="hover:text-brand-600 transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Terms of Service</a></li>
+              <li><Link to="/about" className="hover:text-brand-600 transition-colors">About Us</Link></li>
+              <li><Link to="/careers" className="hover:text-brand-600 transition-colors">Careers</Link></li>
+              <li><Link to="/privacy" className="hover:text-brand-600 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-brand-600 transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>
