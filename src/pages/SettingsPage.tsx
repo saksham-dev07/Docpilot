@@ -15,7 +15,9 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  Clock,
+  Info
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
@@ -44,7 +46,9 @@ export const SettingsPage: React.FC = () => {
     specialty: '',
     phone: '',
     location: '',
-    bio: ''
+    bio: '',
+    experience: '',
+    consultationFee: ''
   });
 
   useEffect(() => {
@@ -62,7 +66,9 @@ export const SettingsPage: React.FC = () => {
               specialty: data.specialty || '',
               phone: data.phone || '',
               location: data.location || '',
-              bio: data.bio || ''
+              bio: data.bio || '',
+              experience: data.experience || '',
+              consultationFee: data.consultationFee || ''
             });
           }
         } catch (error) {
@@ -253,6 +259,32 @@ export const SettingsPage: React.FC = () => {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Years of Experience</label>
+                    <div className="relative group">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
+                      <input 
+                        type="text" 
+                        value={formData.experience}
+                        onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                        placeholder="e.g. 15+ Years"
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-full space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Consultation Fee (₹)</label>
+                    <div className="relative group">
+                      <p className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-400 group-focus-within:text-brand-600 transition-colors">₹</p>
+                      <input 
+                        type="number" 
+                        value={formData.consultationFee}
+                        onChange={(e) => setFormData({ ...formData, consultationFee: e.target.value })}
+                        placeholder="e.g. 500"
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-900 focus:bg-white focus:border-brand-500/20 focus:ring-4 focus:ring-brand-500/5 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -276,7 +308,9 @@ export const SettingsPage: React.FC = () => {
                           specialty: userData.specialty || '',
                           phone: userData.phone || '',
                           location: userData.location || '',
-                          bio: userData.bio || ''
+                          bio: userData.bio || '',
+                          experience: userData.experience || '',
+                          consultationFee: userData.consultationFee || ''
                         });
                       }
                     }}

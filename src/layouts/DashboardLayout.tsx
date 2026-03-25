@@ -16,7 +16,8 @@ import {
   LogOut,
   Search,
   Bell,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -24,7 +25,7 @@ const doctorSidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/doctor' },
   { icon: Users, label: 'OPD Manager', path: '/opd' },
   { icon: Calendar, label: 'Appointments', path: '/doctor/appointments' },
-  { icon: Video, label: 'Consultation', path: '/doctor/consultations' },
+  { icon: MessageSquare, label: 'Chat Sessions', path: '/doctor/consultations' },
   { icon: FileText, label: 'Workflow', path: '/workflow' },
   { icon: Archive, label: 'Archive', path: '/doctor/archive' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
@@ -35,7 +36,7 @@ const doctorSidebarItems = [
 const patientSidebarItems = [
   { icon: LayoutDashboard, label: 'My Health', path: '/patient' },
   { icon: Calendar, label: 'Book Appointment', path: '/book' },
-  { icon: Video, label: 'My Consultations', path: '/patient/consultations' },
+  { icon: MessageSquare, label: 'Chat Sessions', path: '/patient/consultations' },
   { icon: Archive, label: 'My Records', path: '/patient/archive' },
   { icon: Settings, label: 'Settings', path: '/patient/settings' },
 ];
@@ -150,7 +151,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Sidebar */}
       <aside className="w-72 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen">
         <div className="p-8">
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to={isDoctorPath ? '/doctor' : '/patient'} className="flex items-center gap-3 group">
             <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
               <span className="font-display font-extrabold text-xl">A</span>
             </div>

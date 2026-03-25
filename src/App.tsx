@@ -11,8 +11,6 @@ import { DoctorDashboard } from './pages/DoctorDashboard';
 import { PatientDashboard } from './pages/PatientDashboard';
 import { BookAppointment } from './pages/BookAppointment';
 import { DoctorAppointments } from './pages/DoctorAppointments';
-import { DoctorLiveConsultation } from './pages/DoctorLiveConsultation';
-import { PatientLiveConsultation } from './pages/PatientLiveConsultation';
 import { DoctorConsultations } from './pages/DoctorConsultations';
 import { PatientConsultations } from './pages/PatientConsultations';
 import { OPDManager } from './pages/OPDManager';
@@ -83,13 +81,11 @@ function App() {
         <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute allowedRole="doctor"><DoctorAppointments /></ProtectedRoute>} />
         <Route path="/doctor/consultations" element={<ProtectedRoute allowedRole="doctor"><DoctorConsultations /></ProtectedRoute>} />
-        <Route path="/doctor/consultation" element={<ProtectedRoute allowedRole="doctor"><DoctorLiveConsultation /></ProtectedRoute>} />
         <Route path="/doctor/archive" element={<ProtectedRoute allowedRole="doctor"><ArchivePage /></ProtectedRoute>} />
         <Route path="/doctor/settings" element={<ProtectedRoute allowedRole="doctor"><SettingsPage /></ProtectedRoute>} />
         
         <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientDashboard /></ProtectedRoute>} />
         <Route path="/patient/consultations" element={<ProtectedRoute allowedRole="patient"><PatientConsultations /></ProtectedRoute>} />
-        <Route path="/patient/consultation" element={<ProtectedRoute allowedRole="patient"><PatientLiveConsultation /></ProtectedRoute>} />
         <Route path="/patient/archive" element={<ProtectedRoute allowedRole="patient"><PatientArchive /></ProtectedRoute>} />
         <Route path="/patient/settings" element={<ProtectedRoute allowedRole="patient"><PatientSettings /></ProtectedRoute>} />
         

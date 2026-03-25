@@ -17,11 +17,17 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { ID } from 'appwrite';
+import { appwriteStorage, APPWRITE_BUCKET_ID } from '../lib/appwrite';
 
 export const DocumentWorkflow: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'All' | 'Reports' | 'Imaging'>('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [stats, setStats] = useState([
     { title: 'Pending Review', count: '0', icon: Clock, color: 'text-amber-600 bg-amber-50' },
     { title: 'Verified Reports', count: '0', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
@@ -60,6 +66,55 @@ export const DocumentWorkflow: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    
+    if (file.size > 20 * 1024 * 1024) {
+      alert("File is too large securely bypassing 20MB limit.");
+      return;
+    }
+    
+    setIsUploading(true);
+    try {
+      const response = await appwriteStorage.createFile(APPWRITE_BUCKET_ID, ID.unique(), file);
+      const viewUrl = appwriteStorage.getFileView(APPWRITE_BUCKET_ID, response.$id);
+      const downloadUrl = appwriteStorage.getFileDownload(APPWRITE_BUCKET_ID, response.$id);
+      
+      const fileExt = file.name.split('.').pop()?.toUpperCase() || 'DOC';
+      const isImg = ['JPG', 'JPEG', 'PNG', 'WEBP', 'DICOM'].includes(fileExt);
+
+      await addDoc(collection(db, 'medical_records'), {
+        name: file.name,
+        type: fileExt,
+        category: isImg ? 'Imaging' : 'Reports',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        patientName: 'Unassigned',
+        status: 'Pending Review',
+        doctorId: auth.currentUser.uid,
+        appwriteFileId: response.$id,
+        appwriteViewUrl: viewUrl,
+        appwriteDownloadUrl: downloadUrl
+      });
+    } catch(err) {
+      console.error(err);
+      alert('Upload failed safely connecting endpoints.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const filteredDocs = documents.filter(doc => {
+    if (activeTab !== 'All' && doc.category !== activeTab) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return doc.name?.toLowerCase().includes(q) || doc.patientName?.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-10">
       {/* Header */}
@@ -73,9 +128,10 @@ export const DocumentWorkflow: React.FC = () => {
           <p className="text-slate-500 text-lg">Manage prescriptions, lab reports, and medical imaging.</p>
         </motion.div>
         <div className="flex gap-3">
-          <button className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Upload Document
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2 disabled:opacity-50">
+            {isUploading ? <Activity className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {isUploading ? 'Uploading...' : 'Upload Document'}
           </button>
           <button className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
             <FilePlus className="w-4 h-4" />
@@ -116,9 +172,9 @@ export const DocumentWorkflow: React.FC = () => {
           <div className="flex items-center gap-6">
             <h2 className="text-xl font-display font-bold text-slate-900">Recent Documents</h2>
             <div className="flex bg-white p-1 rounded-xl border border-slate-100">
-              <button className="px-4 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-brand-500/20 transition-all">All</button>
-              <button className="px-4 py-1.5 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all">Reports</button>
-              <button className="px-4 py-1.5 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all">Imaging</button>
+              <button onClick={() => setActiveTab('All')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'All' ? "bg-brand-600 text-white shadow-lg shadow-brand-500/20" : "text-slate-500 hover:bg-slate-50")}>All</button>
+              <button onClick={() => setActiveTab('Reports')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'Reports' ? "bg-brand-600 text-white shadow-lg shadow-brand-500/20" : "text-slate-500 hover:bg-slate-50")}>Reports</button>
+              <button onClick={() => setActiveTab('Imaging')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'Imaging' ? "bg-brand-600 text-white shadow-lg shadow-brand-500/20" : "text-slate-500 hover:bg-slate-50")}>Imaging</button>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -126,6 +182,8 @@ export const DocumentWorkflow: React.FC = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
               <input 
                 type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search documents..." 
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-100 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 transition-all outline-none"
               />
@@ -152,11 +210,11 @@ export const DocumentWorkflow: React.FC = () => {
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-slate-500">Loading documents...</td>
                 </tr>
-              ) : documents.length === 0 ? (
+              ) : filteredDocs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-slate-500">No documents found.</td>
                 </tr>
-              ) : documents.map((doc) => (
+              ) : filteredDocs.map((doc) => (
                 <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
@@ -188,10 +246,10 @@ export const DocumentWorkflow: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all" title="View">
+                      <button onClick={() => doc.appwriteViewUrl && window.open(doc.appwriteViewUrl, '_blank')} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all" title="Download">
+                      <button onClick={() => doc.appwriteDownloadUrl && window.open(doc.appwriteDownloadUrl, '_blank')} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all" title="Download">
                         <Download className="w-5 h-5" />
                       </button>
                       <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all" title="Share">

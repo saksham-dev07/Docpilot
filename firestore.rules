@@ -137,6 +137,10 @@ service cloud.firestore {
     // Match Rules
     // ===============================================================
 
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);

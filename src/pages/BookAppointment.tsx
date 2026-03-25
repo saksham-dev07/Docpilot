@@ -9,10 +9,13 @@ import {
   Star, 
   Info,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Video,
+  MapPin,
+  MessageSquare
 } from 'lucide-react';
 import { cn, handleFirestoreError, OperationType } from '../lib/utils';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -23,7 +26,6 @@ export const BookAppointment: React.FC = () => {
   const oldConsultationId = location.state?.oldConsultationId;
   const rescheduleCount = location.state?.rescheduleCount || 0;
   const isFreeReschedule = isReschedule && rescheduleCount < 3;
-  const fee = isFreeReschedule ? 0 : 500;
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
@@ -33,6 +35,7 @@ export const BookAppointment: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [appointmentType, setAppointmentType] = useState<'appointment' | 'consultation'>('appointment');
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const timeSlots = [
@@ -66,25 +69,26 @@ export const BookAppointment: React.FC = () => {
       return;
     }
 
-    const q = query(
-      collection(db, 'appointments'),
-      where('doctorId', '==', selectedDoctor.id),
-      where('date', '==', selectedDate)
-    );
+    let apts: string[] = [];
+    let cons: string[] = [];
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const booked = snapshot.docs.map(doc => doc.data().time);
+    const updateSlots = () => {
+      const booked = [...apts, ...cons];
       setBookedSlots(booked);
       
       // Reset selected time if it's now booked
       if (selectedTime && booked.includes(selectedTime)) {
         setSelectedTime(null);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'appointments');
-    });
+    };
 
-    return () => unsubscribe();
+    const qApt = query(collection(db, 'appointments'), where('doctorId', '==', selectedDoctor.id), where('date', '==', selectedDate));
+    const unsubApt = onSnapshot(qApt, (snapshot) => { apts = snapshot.docs.map(doc => doc.data().time); updateSlots(); });
+
+    const qCons = query(collection(db, 'consultations'), where('doctorId', '==', selectedDoctor.id), where('date', '==', selectedDate));
+    const unsubCons = onSnapshot(qCons, (snapshot) => { cons = snapshot.docs.map(doc => doc.data().time); updateSlots(); });
+
+    return () => { unsubApt(); unsubCons(); };
   }, [selectedDoctor, selectedDate]);
 
   const handleProceed = () => {
@@ -99,45 +103,47 @@ export const BookAppointment: React.FC = () => {
     setBooking(true);
     try {
       const doctorName = `${selectedDoctor.firstName} ${selectedDoctor.lastName}`;
-      const patientName = auth.currentUser.displayName || 'Patient';
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const patientName = userDoc.exists() && userDoc.data().firstName ? `${userDoc.data().firstName} ${userDoc.data().lastName}` : (auth.currentUser.displayName || 'Patient');
 
-      await addDoc(collection(db, 'appointments'), {
-        patientId: auth.currentUser.uid,
-        patientName: patientName,
-        doctorId: selectedDoctor.id,
-        doctorName: doctorName,
-        date: selectedDate,
-        time: selectedTime,
-        status: 'Scheduled',
-        type: 'In-person',
-        priority: 'Medium',
-        createdAt: new Date().toISOString()
-      }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'appointments'));
-      
-      // Also create a consultation entry
-      await addDoc(collection(db, 'consultations'), {
-        patientId: auth.currentUser.uid,
-        patientName: patientName,
-        doctorId: selectedDoctor.id,
-        doctorName: doctorName,
-        date: selectedDate,
-        time: selectedTime,
-        status: 'Scheduled',
-        specialty: selectedDoctor.specialty || 'General Physician',
-        rescheduleCount: isReschedule ? rescheduleCount + 1 : 0,
-        createdAt: new Date().toISOString()
-      }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'consultations'));
+      if (appointmentType === 'appointment') {
+         await addDoc(collection(db, 'appointments'), {
+           patientId: auth.currentUser.uid,
+           patientName: patientName,
+           doctorId: selectedDoctor.id,
+           doctorName: doctorName,
+           date: selectedDate,
+           time: selectedTime,
+           status: 'Scheduled',
+           type: 'In-person',
+           priority: 'Medium',
+           createdAt: new Date().toISOString()
+         }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'appointments'));
+      } else {
+         await addDoc(collection(db, 'consultations'), {
+           patientId: auth.currentUser.uid,
+           patientName: patientName,
+           doctorId: selectedDoctor.id,
+           doctorName: doctorName,
+           date: selectedDate,
+           time: selectedTime,
+           status: 'Scheduled',
+           specialty: selectedDoctor.specialty || 'General Physician',
+           rescheduleCount: isReschedule ? rescheduleCount + 1 : 0,
+           createdAt: new Date().toISOString()
+         }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'consultations'));
 
-      if (isReschedule && oldConsultationId) {
-        await updateDoc(doc(db, 'consultations', oldConsultationId), {
-          status: 'Rescheduled'
-        }).catch(error => handleFirestoreError(error, OperationType.UPDATE, 'consultations'));
+         if (isReschedule && oldConsultationId) {
+           await updateDoc(doc(db, 'consultations', oldConsultationId), {
+             status: 'Rescheduled'
+           }).catch(error => handleFirestoreError(error, OperationType.UPDATE, 'consultations'));
+         }
       }
 
       navigate('/patient');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error booking appointment:', error);
-      alert('Failed to book appointment. Please try again.');
+      alert(`Failed to book appointment. System Error: ${error.message || JSON.stringify(error)}`);
     } finally {
       setBooking(false);
     }
@@ -202,11 +208,24 @@ export const BookAppointment: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-slate-900 truncate">{doc.firstName} {doc.lastName}</h4>
                       <p className="text-xs text-slate-500 mb-2">{doc.specialty || 'General Physician'}</p>
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        <Star className="w-3 h-3 fill-current" />
-                        <span className="text-xs font-bold">4.9</span>
-                        <span className="text-slate-400 text-[10px] font-medium">(128 reviews)</span>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-1 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100">
+                          <Clock className="w-3 h-3" />
+                          <span className="text-[10px] font-black uppercase tracking-wider">{doc.experience || '5+ Years'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100">
+                          <Info className="w-3 h-3" />
+                          <span className="text-[10px] font-black uppercase tracking-wider">₹{doc.consultationFee || '500'} Fee</span>
+                        </div>
                       </div>
+                      {doc.location && (
+                        <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{doc.location}</span>
+                        </p>
+                      )}
+                      {doc.bio && (
+                        <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed italic border-l-2 border-slate-200 pl-2">"{doc.bio}"</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-4 border-t border-slate-50">
@@ -234,6 +253,22 @@ export const BookAppointment: React.FC = () => {
               <span className="w-8 h-8 bg-brand-600 text-white rounded-xl flex items-center justify-center text-sm">2</span>
               Schedule Date & Time
             </h2>
+
+            {/* Booking Type Toggle */}
+            <div className="flex gap-4 mb-8">
+              <button 
+                onClick={() => setAppointmentType('appointment')}
+                className={cn("flex-1 py-4 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 transition-all border-2", appointmentType === 'appointment' ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-100 bg-white text-slate-500 hover:border-slate-200")}
+              >
+                <UserIcon className="w-5 h-5" /> Clinic Visit
+              </button>
+              <button 
+                onClick={() => setAppointmentType('consultation')}
+                className={cn("flex-1 py-4 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 transition-all border-2", appointmentType === 'consultation' ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-100 bg-white text-slate-500 hover:border-slate-200")}
+              >
+                <MessageSquare className="w-5 h-5" /> Chat Consultation
+              </button>
+            </div>
 
             <div className="grid md:grid-cols-2 gap-10">
               {/* Simple Calendar Placeholder */}
@@ -367,18 +402,18 @@ export const BookAppointment: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-6 bg-brand-50 rounded-3xl border border-brand-100 mb-8">
-              <div className="flex items-center gap-3 mb-3 text-brand-600">
-                <Info className="w-5 h-5" />
-                <h4 className="font-bold text-sm">{isReschedule ? 'Reschedule Fee' : 'Consultation Fee'}</h4>
+              <div className="p-6 bg-brand-50 rounded-3xl border border-brand-100 mb-8">
+                <div className="flex items-center gap-3 mb-3 text-brand-600">
+                  <Info className="w-5 h-5" />
+                  <h4 className="font-bold text-sm">{isReschedule ? 'Reschedule Fee' : 'Consultation Fee'}</h4>
+                </div>
+                <div className="flex justify-between items-end">
+                  <p className="text-xs text-brand-700 font-medium">
+                    {isFreeReschedule ? `Free Reschedule (${rescheduleCount}/3 used)` : 'Standard Specialist Fee'}
+                  </p>
+                  <p className="text-2xl font-display font-black text-brand-700">₹{isFreeReschedule ? '0.00' : (selectedDoctor?.consultationFee || 500)}</p>
+                </div>
               </div>
-              <div className="flex justify-between items-end">
-                <p className="text-xs text-brand-700 font-medium">
-                  {isFreeReschedule ? `Free Reschedule (${rescheduleCount}/3 used)` : 'Standard Specialist Fee'}
-                </p>
-                <p className="text-2xl font-display font-black text-brand-700">₹{fee.toFixed(2)}</p>
-              </div>
-            </div>
 
             <button 
               onClick={handleProceed}
@@ -454,7 +489,7 @@ export const BookAppointment: React.FC = () => {
                     <p className="text-xs text-brand-700 font-medium">{isReschedule ? 'Reschedule Fee' : 'Consultation Fee'}</p>
                     <p className="text-[10px] text-brand-500">{isFreeReschedule ? 'Free of charge' : 'Payable at clinic'}</p>
                   </div>
-                  <p className="text-3xl font-display font-black text-brand-700">₹{fee.toFixed(2)}</p>
+                  <p className="text-3xl font-display font-black text-brand-700">₹{isFreeReschedule ? '0.00' : (selectedDoctor?.consultationFee || 500)}</p>
                 </div>
               </div>
 

@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
 
 export const OPDManager: React.FC = () => {
   const [queue, setQueue] = useState<any[]>([]);
@@ -40,21 +41,22 @@ export const OPDManager: React.FC = () => {
         ...doc.data()
       }));
       
-      // Filter for today's appointments (simplified for demo)
-      const today = new Date().toISOString().split('T')[0];
-      const todayAppointments = appointmentsData.filter((app: any) => app.date === today);
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
+      const todayAppointments = appointmentsData.filter((app: any) => app.date === today);
       setQueue(todayAppointments);
       
-      // Update stats
-      const waiting = todayAppointments.filter((app: any) => app.status === 'scheduled').length;
-      const inConsultation = todayAppointments.filter((app: any) => app.status === 'confirmed').length;
+      const waiting = todayAppointments.filter((app: any) => app.status === 'Waiting').length;
+      const inConsultation = todayAppointments.filter((app: any) => app.status === 'In Progress').length;
+      const critical = todayAppointments.filter((app: any) => app.priority === 'High').length;
+      const totalWaitMins = waiting * 12; // Dynamic 12m tracker per patient
       
       setStats(prev => [
         { ...prev[0], value: waiting.toString() },
         { ...prev[1], value: inConsultation.toString() },
-        prev[2],
-        { ...prev[3], value: todayAppointments.filter((app: any) => app.priority === 'High').length.toString() }
+        { ...prev[2], value: `${totalWaitMins}m` },
+        { ...prev[3], value: critical.toString() }
       ]);
       
       setLoading(false);
@@ -62,6 +64,14 @@ export const OPDManager: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const handleComplete = async (patientId: string) => {
+    try {
+      await updateDoc(doc(db, 'appointments', patientId), { status: 'Completed' });
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="space-y-10">
@@ -173,12 +183,13 @@ export const OPDManager: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                     <span className={cn(
-                      "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-block",
-                      patient.status === 'confirmed' ? "bg-brand-50 text-brand-600" :
-                      patient.status === 'scheduled' ? "bg-blue-50 text-blue-600" :
-                      "bg-slate-50 text-slate-500"
+                      "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-block text-center",
+                      patient.status === 'In Progress' ? "bg-brand-50 text-brand-600" :
+                      patient.status === 'Waiting' ? "bg-amber-50 text-amber-600" :
+                      patient.status === 'Completed' ? "bg-emerald-50 text-emerald-600" :
+                      "bg-blue-50 text-blue-600"
                     )}>
-                      {patient.status}
+                      {patient.status || 'Scheduled'}
                     </span>
                   </td>
                   <td className="px-8 py-6">
@@ -197,15 +208,15 @@ export const OPDManager: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all">
+                      <button onClick={() => handleComplete(patient.id)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="Mark as Completed">
                         <CheckCircle2 className="w-5 h-5" />
                       </button>
                       <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
                         <MoreVertical className="w-5 h-5" />
                       </button>
-                      <button className="p-2 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20">
+                      <Link to={`/doctor/consultations?id=${patient.id}`} className="p-2 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center">
                         <ChevronRight className="w-4 h-4" />
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>

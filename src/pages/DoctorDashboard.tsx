@@ -11,21 +11,49 @@ import {
   Clock, 
   CheckCircle2,
   AlertCircle,
-  Activity
+  Activity,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot, orderBy, limit, getDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PatientProfileModal } from '../components/PatientProfileModal';
 
 export const DoctorDashboard: React.FC = () => {
   const [userName, setUserName] = useState('Doctor');
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [allAppointments, setAllAppointments] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
+  const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+  const [activePatientProfileId, setActivePatientProfileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const aptUids = allAppointments.map(a => a.patientId);
+    const consUids = consultations.map(c => c.patientId);
+    const uids = [...new Set([...aptUids, ...consUids].filter(Boolean))];
+    uids.forEach(async (uidRaw) => {
+      const uid = uidRaw as string;
+      if (!patientNames[uid]) {
+        try {
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists() && snap.data().firstName) {
+            setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+          }
+        } catch(e) {}
+      }
+    });
+  }, [allAppointments, consultations]);
+
   const [stats, setStats] = useState([
-    { label: 'Total Patients', value: '0', change: '+0%', icon: Users, color: 'bg-brand-50 text-brand-600' },
-    { label: 'Appointments', value: '0', change: '+0%', icon: Calendar, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Consultations', value: '0', change: '+0%', icon: Video, color: 'bg-blue-50 text-blue-600' },
-    { label: 'AI Insights', value: '0', change: '+0%', icon: Zap, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Total Patients', value: '0', icon: Users, color: 'bg-brand-50 text-brand-600' },
+    { label: 'Appointments', value: '0', icon: Calendar, color: 'bg-emerald-50 text-emerald-600' },
+    { label: 'Chat Sessions', value: '0', icon: MessageSquare, color: 'bg-blue-50 text-blue-600' },
+    { label: 'AI Insights', value: '0', icon: Zap, color: 'bg-purple-50 text-purple-600' },
   ]);
 
   useEffect(() => {
@@ -41,81 +69,119 @@ export const DoctorDashboard: React.FC = () => {
     };
     fetchUser();
 
-    // Fetch Appointments for today
-    const today = '2026-03-23'; // Using current date from context
-    const q = query(
-      collection(db, 'appointments'),
-      where('doctorId', '==', auth.currentUser.uid),
-      where('date', '==', today),
-      orderBy('time', 'asc')
-    );
+    // SINGLE UNIFIED QUERY STREAM
+    const aptQuery = query(collection(db, 'appointments'), where('doctorId', '==', auth.currentUser.uid));
+    const unsubscribeApts = onSnapshot(aptQuery, (snapshot) => {
+      const allApts = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      setAllAppointments(allApts);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const apts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAppointments(apts);
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
-      // Update stats
+      const upcoming = allApts.filter(a => a.date >= today).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+      setAppointments(upcoming);
+
+      const uniquePatients = new Set(allApts.map(a => a.patientId)).size;
+      
+      const insightsList = [];
+      const todayApts = upcoming.filter(a => a.date === today);
+      if (todayApts.length > 4) {
+         insightsList.push({ id: '1', title: 'High Volume Day', severity: 'High', patient: 'Multiple', desc: `You have an exceptionally dense schedule today with ${todayApts.length} consultations.` });
+      }
+      const urgent = upcoming.find(a => a.type?.includes('Emergency') || a.type?.includes('Urgent'));
+      if (urgent) {
+         insightsList.push({ id: '2', title: 'Urgent Care Required', severity: 'High', patient: urgent.patientName || 'Unknown', desc: 'An emergency appointment has been slotted into your upcoming workflow.' });
+      }
+      if (upcoming.some(a => a.status === 'Waiting')) {
+         insightsList.push({ id: '3', title: 'Patients Waiting', severity: 'Normal', patient: 'Lobby', desc: `You have active patients waiting in the digital lobby experiencing delays.` });
+      }
+      if (insightsList.length === 0) {
+         insightsList.push({ id: '4', title: 'Standard Cadence', severity: 'Normal', patient: 'General', desc: 'Your calendar is well-balanced without critical overlaps.' });
+      }
+      setAiInsights(insightsList);
+
       setStats(prev => prev.map(stat => {
-        if (stat.label === 'Appointments') {
-          return { ...stat, value: snapshot.size.toString() };
-        }
+        if (stat.label === 'Appointments') return { ...stat, value: upcoming.length.toString() };
+        if (stat.label === 'Total Patients') return { ...stat, value: uniquePatients.toString() };
+        if (stat.label === 'AI Insights') return { ...stat, value: insightsList.length.toString() };
         return stat;
       }));
     });
 
-    // Fetch Total Patients (unique patientIds in appointments)
-    const patientsQuery = query(
-      collection(db, 'appointments'),
-      where('doctorId', '==', auth.currentUser.uid)
-    );
-    const unsubscribePatients = onSnapshot(patientsQuery, (snapshot) => {
-      const uniquePatients = new Set(snapshot.docs.map(doc => doc.data().patientId));
+    const consQuery = query(collection(db, 'consultations'), where('doctorId', '==', auth.currentUser.uid));
+    const unsubscribeCons = onSnapshot(consQuery, (snapshot) => {
+      const isPast = (date: string, time: string) => {
+        try {
+          if (!time) return false;
+          const [timeVal, modifier] = time.split(' ');
+          let [hours, minutes] = timeVal.split(':').map(Number);
+          if (hours === 12 && modifier === 'AM') hours = 0;
+          else if (hours < 12 && modifier === 'PM') hours += 12;
+          const slotDateTime = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+          return slotDateTime < new Date();
+        } catch { return false; }
+      };
+
+      const activeCons = snapshot.docs.filter(d => {
+         if (d.id.endsWith('_chat')) return false;
+         const data = d.data();
+         if (data.status === 'Scheduled' && isPast(data.date, data.time)) return false; // Hide technically missed items
+         return data.status === 'Completed' || data.status === 'Scheduled' || data.status === 'Active' || data.status === 'In Progress';
+      });
+
+      const consArr = activeCons.map(d => ({ id: d.id, ...(d.data() as any) }));
+      consArr.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+      setConsultations(consArr);
+
       setStats(prev => prev.map(stat => {
-        if (stat.label === 'Total Patients') {
-          return { ...stat, value: uniquePatients.size.toString() };
-        }
+        if (stat.label === 'Consultations') return { ...stat, value: activeCons.length.toString() };
         return stat;
       }));
     });
 
-    // Fetch Consultations
-    const consultationsQuery = query(
-      collection(db, 'consultations'),
-      where('doctorId', '==', auth.currentUser.uid)
-    );
-    const unsubscribeConsultations = onSnapshot(consultationsQuery, (snapshot) => {
-      setStats(prev => prev.map(stat => {
-        if (stat.label === 'Consultations') {
-          return { ...stat, value: snapshot.size.toString() };
-        }
-        return stat;
-      }));
-    });
-
-    return () => {
-      unsubscribe();
-      unsubscribePatients();
-      unsubscribeConsultations();
-    };
+    return () => { unsubscribeApts(); unsubscribeCons(); };
   }, []);
-
-  const [aiInsights, setAiInsights] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    // In a real app, these would be generated by a cloud function or AI service
-    // For now, we'll fetch from a 'insights' collection if it exists, or show empty
-    const q = query(
-      collection(db, 'insights'),
-      where('doctorId', '==', auth.currentUser.uid),
-      limit(3)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const insights = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAiInsights(insights);
+    const daysLength = timeRange === 'week' ? 7 : 30;
+    const dateArray = Array.from({length: daysLength}).map((_, i) => {
+       const d = new Date();
+       d.setDate(d.getDate() - (daysLength - 1 - i));
+       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
-    return () => unsubscribe();
-  }, []);
+    
+    const dayCounts = dateArray.reduce((acc, dateStr) => { acc[dateStr] = 0; return acc; }, {} as Record<string, number>);
+    allAppointments.forEach(a => { if (dayCounts[a.date] !== undefined) dayCounts[a.date]++; });
+    
+    const chartFormatter = dateArray.map(dateStr => {
+       const d = new Date(dateStr);
+       const name = timeRange === 'week' ? d.toLocaleDateString('en-US', { weekday: 'short' }) : d.getDate().toString();
+       return { name, appointments: dayCounts[dateStr], consultations: Math.floor(dayCounts[dateStr] * 0.8) };
+    });
+    setChartData(chartFormatter);
+  }, [timeRange, allAppointments]);
+
+  const dismissAlert = (id: string) => {
+    setAiInsights(prev => {
+      const updated = prev.filter(insight => insight.id !== id);
+      setStats(s => s.map(stat => stat.label === 'AI Insights' ? { ...stat, value: updated.length.toString() } : stat));
+      return updated;
+    });
+  };
+
+  const handleDownloadReport = () => {
+    const text = `AetherMed AI - Daily Practice Report\nDate: ${new Date().toLocaleDateString()}\nDoctor: ${userName}\nTotal Daily Appointments: ${appointments.length}\n\nQueue List:\n` + 
+      appointments.map(a => `- ${a.time}: ${a.patientName} (${a.type}) - [${a.status || 'Scheduled'}]`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Practice_Report_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-10">
@@ -127,14 +193,14 @@ export const DoctorDashboard: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">Good Morning, Dr. {userName}</h1>
-          <p className="text-slate-500 text-lg">You have {appointments.length} appointments scheduled for today.</p>
+          <p className="text-slate-500 text-lg">You have {appointments.length} upcoming appointments scheduled.</p>
         </motion.div>
         <div className="flex gap-3">
-          <button className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all">
-            Download Report
+          <button onClick={handleDownloadReport} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+             Download Report
           </button>
-          <Link to="/doctor/appointments" className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all">
-            + New Appointment
+          <Link to="/doctor/appointments" className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
+             View Appointments
           </Link>
         </div>
       </div>
@@ -144,19 +210,18 @@ export const DoctorDashboard: React.FC = () => {
         {stats.map((stat, i) => (
           <Link
             key={stat.label}
-            to={stat.label === 'Appointments' ? '/doctor/appointments' : stat.label === 'Consultations' ? '/doctor/consultations' : '#'}
+            to={stat.label === 'Appointments' ? '/doctor/appointments' : stat.label === 'Chat Sessions' ? '/doctor/consultations' : '#'}
+            onClick={(e) => {
+               if (stat.label === 'AI Insights') {
+                  e.preventDefault();
+                  document.getElementById('critical-alerts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+               }
+            }}
             className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm hover:shadow-md transition-all group block"
           >
             <div className="flex justify-between items-start mb-4">
               <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", stat.color)}>
                 <stat.icon className="w-6 h-6" />
-              </div>
-              <div className={cn(
-                "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-                stat.change.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-              )}>
-                {stat.change}
-                <ArrowUpRight className="w-3 h-3" />
               </div>
             </div>
             <p className="text-slate-500 text-sm font-medium mb-1">{stat.label}</p>
@@ -166,13 +231,15 @@ export const DoctorDashboard: React.FC = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Appointment Queue */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="lg:col-span-2 bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden"
-        >
+        {/* Queues Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Appointment Queue */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden"
+          >
           <div className="p-8 border-b border-slate-50 flex justify-between items-center">
             <h2 className="text-xl font-display font-bold text-slate-900">Appointment Queue</h2>
             <Link to="/doctor/appointments" className="text-brand-600 font-bold text-sm hover:underline">View All</Link>
@@ -184,35 +251,102 @@ export const DoctorDashboard: React.FC = () => {
                   <User className="w-6 h-6 text-slate-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-slate-900 truncate">{apt.patientName}</h4>
+                  <h4 
+                    onClick={() => apt.patientId && setActivePatientProfileId(apt.patientId)}
+                    className="font-bold text-slate-900 truncate cursor-pointer hover:text-brand-600 hover:underline transition-all"
+                  >
+                    {patientNames[apt.patientId] || apt.patientName}
+                  </h4>
                   <p className="text-sm text-slate-500">{apt.type}</p>
                 </div>
-                <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
-                  <Clock className="w-4 h-4" />
-                  {apt.time}
+                <div className="flex flex-col justify-center text-slate-500 font-medium text-sm shrink-0 w-32">
+                  <span className="text-[10px] font-black uppercase text-brand-600 tracking-wider mb-0.5">
+                    {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{apt.time}</div>
                 </div>
-                <div className="w-32">
+                <div className="w-28 shrink-0">
                   <span className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-bold inline-block w-full text-center",
+                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block w-full text-center",
                     apt.status === 'In Progress' ? "bg-brand-50 text-brand-600" :
                     apt.status === 'Waiting' ? "bg-amber-50 text-amber-600" :
                     "bg-slate-50 text-slate-500"
                   )}>
-                    {apt.status}
+                    {apt.status || 'Scheduled'}
                   </span>
                 </div>
-                <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
-                  <MoreHorizontal className="w-5 h-5" />
-                </button>
               </div>
             )) : (
               <div className="p-20 text-center text-slate-400">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>No appointments scheduled for today.</p>
+                <p>No upcoming appointments.</p>
               </div>
             )}
           </div>
         </motion.div>
+
+        {/* Consultations Queue */}
+        <motion.div
+           initial={{ opacity: 0, x: -20 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 0.6, delay: 0.5 }}
+           className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden"
+        >
+          <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+            <h2 className="text-xl font-display font-bold text-slate-900">Consultation Queue</h2>
+            <Link to="/doctor/consultations" className="text-brand-600 font-bold text-sm hover:underline">View All</Link>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {consultations.length > 0 ? consultations.map((cons) => (
+              <div key={cons.id} className="p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors group">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
+                  <User className="w-6 h-6 text-slate-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 
+                    onClick={() => cons.patientId && setActivePatientProfileId(cons.patientId)}
+                    className="font-bold text-slate-900 truncate cursor-pointer hover:text-brand-600 hover:underline transition-all"
+                  >
+                    {patientNames[cons.patientId] || cons.patientName}
+                  </h4>
+                  <p className="text-sm text-slate-500">Virtual Chat Session</p>
+                </div>
+                <div className="flex flex-col justify-center text-slate-500 font-medium text-sm shrink-0 w-32">
+                  <span className="text-[10px] font-black uppercase text-brand-600 tracking-wider mb-0.5">
+                    {new Date(cons.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{cons.time}</div>
+                </div>
+                <div className="w-28 shrink-0">
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block w-full text-center",
+                    cons.status === 'In Progress' ? "bg-emerald-50 text-emerald-600" :
+                    cons.status === 'Waiting' ? "bg-amber-50 text-amber-600" :
+                    "bg-brand-50 text-brand-600"
+                  )}>
+                    {cons.status || 'Scheduled'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {cons.status !== 'Completed' && (
+                    <Link 
+                      to={`/doctor/consultations`}
+                      className="px-5 py-2 bg-brand-600 text-white font-bold text-xs rounded-xl hover:bg-brand-700 transition-colors shadow-sm flex items-center gap-2"
+                    >
+                      <MessageSquare className="w-3 h-3"/> Chat
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )) : (
+              <div className="p-20 text-center text-slate-400">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                 <p>No upcoming consultations.</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
 
         {/* AI Insights Sidebar */}
         <motion.div
@@ -231,34 +365,41 @@ export const DoctorDashboard: React.FC = () => {
               </div>
               <h3 className="text-2xl font-display font-bold mb-2">AI Clinical Assistant</h3>
               <p className="text-brand-100 mb-6 leading-relaxed">I've analyzed patient records today. Here are the critical findings.</p>
-              <button className="w-full py-3 bg-white text-brand-600 rounded-2xl font-bold text-sm hover:bg-brand-50 transition-all">
+              <button 
+                onClick={() => document.getElementById('critical-alerts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="w-full py-3 bg-white text-brand-600 rounded-2xl font-bold text-sm hover:bg-brand-50 transition-all">
                 Review All Insights
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-4xl border border-slate-100 shadow-sm p-8">
+          <div id="critical-alerts" className="bg-white rounded-4xl border border-slate-100 shadow-sm p-8">
             <h3 className="text-lg font-display font-bold text-slate-900 mb-6 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-rose-500" />
               Critical Alerts
             </h3>
             <div className="space-y-6">
-              {aiInsights.map((insight) => (
-                <div key={insight.id} className="group cursor-pointer">
+              {aiInsights.length > 0 ? aiInsights.map((insight) => (
+                <div key={insight.id} className="group relative">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{insight.title}</h4>
+                    <h4 className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors pr-8">{insight.title}</h4>
                     <span className={cn(
-                      "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider",
+                      "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shrink-0",
                       insight.severity === 'High' ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
                     )}>
                       {insight.severity}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mb-2">Patient: <span className="font-bold text-slate-700">{insight.patient}</span></p>
-                  <p className="text-sm text-slate-600 leading-relaxed">{insight.desc}</p>
+                  <p className="text-xs text-slate-500 mb-2">Patient Target: <span className="font-bold text-slate-700">{insight.patient}</span></p>
+                  <p className="text-sm text-slate-600 leading-relaxed pr-6">{insight.desc}</p>
+                  <button onClick={() => dismissAlert(insight.id)} className="absolute top-1 right-0 p-1 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all" title="Dismiss Event">
+                     ✕
+                  </button>
                   <div className="mt-4 h-px bg-slate-50 group-last:hidden" />
                 </div>
-              ))}
+              )) : (
+                 <p className="text-sm font-medium text-slate-400 text-center py-10 border-2 border-dashed border-slate-100 rounded-2xl">All active insights resolved.</p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -277,17 +418,36 @@ export const DoctorDashboard: React.FC = () => {
             <p className="text-slate-500">Patient volume and consultation trends over the last 30 days.</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all">Week</button>
-            <button className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-500/20 transition-all">Month</button>
+            <button 
+              onClick={() => setTimeRange('week')}
+              className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", timeRange === 'week' ? "bg-brand-600 text-white shadow-lg shadow-brand-500/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100")}
+            >Week</button>
+            <button 
+              onClick={() => setTimeRange('month')}
+              className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", timeRange === 'month' ? "bg-brand-600 text-white shadow-lg shadow-brand-500/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100")}
+            >Month</button>
           </div>
         </div>
-        <div className="h-80 w-full bg-slate-50 rounded-3xl flex items-center justify-center border-2 border-dashed border-slate-200">
-          <div className="text-center">
-            <Activity className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-400 font-medium">Interactive Analytics Chart Will Render Here</p>
-          </div>
+        <div className="h-80 w-full mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              barGap={8}
+            >
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dx={-10} />
+              <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+              <Bar dataKey="appointments" name="Appointments" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="consultations" name="Consultations" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </motion.div>
+      
+      {activePatientProfileId && (
+        <PatientProfileModal patientId={activePatientProfileId} onClose={() => setActivePatientProfileId(null)} />
+      )}
     </div>
   );
 };

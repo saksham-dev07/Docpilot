@@ -16,10 +16,12 @@ import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { ChatWidget } from '../components/ChatWidget';
 
 export const PatientConsultations: React.FC = () => {
   const [consultations, setConsultations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeChat, setActiveChat] = useState<{ doctorId: string, patientId: string, sessionContext: string } | null>(null);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -31,8 +33,11 @@ export const PatientConsultations: React.FC = () => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setConsultations(docs);
+      const consData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).filter(c => !c.id.endsWith('_chat'));
+      setConsultations(consData);
       setLoading(false);
     });
 
@@ -95,10 +100,9 @@ export const PatientConsultations: React.FC = () => {
               <h2 className="text-4xl font-display font-bold mb-2">{liveConsultation.doctorName}</h2>
               <p className="text-brand-100 text-lg mb-8 italic">"Ready for our follow-up regarding your recent consultation."</p>
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                <Link to="/patient/consultation" className="px-8 py-4 bg-white text-brand-600 rounded-2xl font-bold hover:bg-brand-50 transition-all flex items-center gap-2">
-                  Join Call Now
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
+                <button onClick={() => setActiveChat({ doctorId: liveConsultation.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${liveConsultation.date} • ${liveConsultation.time}` })} className="px-8 py-4 bg-white text-brand-600 rounded-2xl font-bold hover:bg-brand-50 transition-all flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5"/> Start Chat Session
+                </button>
                 <button className="px-8 py-4 bg-white/10 text-white rounded-2xl font-bold hover:bg-white/20 transition-all">
                   Prepare Records
                 </button>
@@ -108,7 +112,7 @@ export const PatientConsultations: React.FC = () => {
         </motion.div>
       ) : (
         <div className="bg-slate-50 rounded-[3rem] p-20 text-center text-slate-400 border-2 border-dashed border-slate-200">
-          <VideoOff className="w-16 h-16 mx-auto mb-4 opacity-20" />
+          <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <p className="text-lg font-medium">No live consultations at the moment.</p>
         </div>
       )}
@@ -143,17 +147,20 @@ export const PatientConsultations: React.FC = () => {
                 {c.time}
               </div>
               <div className="flex items-center gap-1.5 text-brand-600">
-                <Video className="w-3.5 h-3.5" />
-                Video Call
+                <MessageSquare className="w-3.5 h-3.5" />
+                Chat Session
               </div>
             </div>
             <div className="flex gap-2">
-              <Link to="/book" state={{ isReschedule: true, oldConsultationId: c.id, rescheduleCount: c.rescheduleCount || 0 }} className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all text-center">
+               <Link to="/book" state={{ isReschedule: true, oldConsultationId: c.id, rescheduleCount: c.rescheduleCount || 0 }} className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all text-center">
                 Reschedule
               </Link>
-              <Link to="/patient/consultation" className="flex-1 py-3 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 text-center">
-                Join
-              </Link>
+               <button onClick={() => setActiveChat({ doctorId: c.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${c.date} • ${c.time}` })} className="relative flex-1 py-3 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 text-center flex items-center justify-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Start Chat
+                {c.messages?.length > 0 && c.messages[c.messages.length - 1].senderId !== auth.currentUser?.uid && !c.messages[c.messages.length - 1].read && (
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
+                )}
+              </button>
             </div>
           </motion.div>
         )) : (
@@ -226,6 +233,17 @@ export const PatientConsultations: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {activeChat && (
+        <ChatWidget 
+          doctorId={activeChat.doctorId}
+          patientId={activeChat.patientId}
+          sessionContext={activeChat.sessionContext}
+          currentUserId={auth.currentUser?.uid || ''} 
+          currentUserName="Patient" 
+          onClose={() => setActiveChat(null)} 
+        />
+      )}
     </div>
   );
 };
