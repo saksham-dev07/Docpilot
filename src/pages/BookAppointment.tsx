@@ -172,12 +172,12 @@ export const BookAppointment: React.FC = () => {
         {/* Step 1: Select Doctor */}
         <div className="lg:col-span-2 space-y-8">
           <section className="bg-white rounded-4xl border border-slate-100 shadow-sm p-8">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-8">
               <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-3">
                 <span className="w-8 h-8 bg-brand-600 text-white rounded-xl flex items-center justify-center text-sm">1</span>
                 Select a Specialist
               </h2>
-              <div className="relative group w-64">
+              <div className="relative group w-full md:w-64">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
                 <input 
                   type="text" 
@@ -259,7 +259,7 @@ export const BookAppointment: React.FC = () => {
             </h2>
 
             {/* Booking Type Toggle */}
-            <div className="flex gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <button 
                 onClick={() => setAppointmentType('appointment')}
                 className={cn("flex-1 py-4 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 transition-all border-2", appointmentType === 'appointment' ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-100 bg-white text-slate-500 hover:border-slate-200")}

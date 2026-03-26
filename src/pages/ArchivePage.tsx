@@ -143,7 +143,7 @@ export const ArchivePage: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -166,12 +166,12 @@ export const ArchivePage: React.FC = () => {
             </>
           )}
         </motion.div>
-        <div className="flex gap-3">
-          <button onClick={handleExportArchive} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <button onClick={handleExportArchive} className="flex-1 md:flex-none justify-center px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
             <Database className="w-4 h-4" />
             Export Archive
           </button>
-          <button onClick={handleBulkArchive} className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center gap-2">
+          <button onClick={handleBulkArchive} className="flex-1 md:flex-none justify-center px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center gap-2">
             <Archive className="w-4 h-4" />
             Bulk Archive
           </button>

@@ -187,7 +187,7 @@ export const DoctorDashboard: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Welcome Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -196,11 +196,11 @@ export const DoctorDashboard: React.FC = () => {
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">Good Morning, Dr. {userName}</h1>
           <p className="text-slate-500 text-lg">You have {appointments.length} upcoming appointments scheduled.</p>
         </motion.div>
-        <div className="flex gap-3">
-          <button onClick={handleDownloadReport} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <button onClick={handleDownloadReport} className="flex-1 md:flex-none justify-center px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
              Download Report
           </button>
-          <Link to="/doctor/appointments" className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
+          <Link to="/doctor/appointments" className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
              View Appointments
           </Link>
         </div>

@@ -85,7 +85,7 @@ export const DoctorAppointments: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -94,11 +94,11 @@ export const DoctorAppointments: React.FC = () => {
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">My Appointments</h1>
           <p className="text-slate-500 text-lg">Manage your daily schedule and patient consultations.</p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all outline-none"
+            className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all outline-none"
           >
             <option value="All">All Statuses</option>
             <option value="Scheduled">Scheduled</option>
@@ -110,7 +110,7 @@ export const DoctorAppointments: React.FC = () => {
           </select>
           <button 
             onClick={() => setShowCalendar(!showCalendar)}
-            className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2"
+            className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2"
           >
             <Calendar className="w-4 h-4" />
             {showCalendar ? 'List View' : 'View Calendar'}
@@ -119,7 +119,7 @@ export const DoctorAppointments: React.FC = () => {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm flex items-center gap-6">
           <div className="w-14 h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center">
             <Calendar className="w-7 h-7" />

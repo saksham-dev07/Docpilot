@@ -150,7 +150,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <div className="flex min-h-screen bg-[#F8F9FB]">
       {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen">
+      <aside className="hidden lg:flex w-72 bg-white border-r border-slate-100 flex-col sticky top-0 h-screen">
         <div className="p-8">
           <Link to={isDoctorPath ? '/doctor' : '/patient'} className="flex items-center gap-3 group">
             <div className="w-8 h-8 flex items-center justify-center bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/20">
@@ -217,7 +217,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-10 sticky top-0 z-30">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-30">
           <div className="flex-1 max-w-xl">
             <div className="relative group z-50">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
@@ -311,7 +311,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           </div>
         </header>
 
-        <div className="p-10">
+        <div className="p-4 lg:p-10">
           {children}
         </div>
       </main>

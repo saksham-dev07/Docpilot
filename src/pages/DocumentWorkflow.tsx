@@ -247,7 +247,7 @@ export const DocumentWorkflow: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -256,13 +256,13 @@ export const DocumentWorkflow: React.FC = () => {
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">Document Workflow</h1>
           <p className="text-slate-500 text-lg">Manage prescriptions, lab reports, and medical imaging.</p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-          <button onClick={() => setShowUploadModal(true)} className="px-6 py-3 bg-brand-50 border border-brand-100 rounded-2xl font-bold text-sm text-brand-600 hover:bg-brand-100 transition-all flex items-center gap-2 shadow-sm">
+          <button onClick={() => setShowUploadModal(true)} className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-50 border border-brand-100 rounded-2xl font-bold text-sm text-brand-600 hover:bg-brand-100 transition-all flex items-center gap-2 shadow-sm">
             <Upload className="w-4 h-4" />
             Upload Document
           </button>
-          <button onClick={() => setShowPrescriptionModal(true)} className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
+          <button onClick={() => setShowPrescriptionModal(true)} className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
             <FilePlus className="w-4 h-4" />
             Create New
           </button>

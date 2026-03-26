@@ -187,7 +187,7 @@ export const PatientDashboard: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -197,12 +197,12 @@ export const PatientDashboard: React.FC = () => {
           <p className="text-slate-500 text-lg">Here's your health overview for today.</p>
         </motion.div>
         
-        <div className="flex items-center gap-4">
-          <button onClick={() => setShowVitalsModal(true)} className="px-6 py-4 bg-slate-100 text-slate-700 rounded-3xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+          <button onClick={() => setShowVitalsModal(true)} className="flex-1 md:flex-none justify-center px-6 py-4 bg-slate-100 text-slate-700 rounded-3xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
             <Activity className="w-5 h-5" />
             Log Vitals
           </button>
-          <Link to="/book" className="px-8 py-4 bg-brand-600 text-white rounded-3xl font-bold text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2 group">
+          <Link to="/book" className="flex-1 md:flex-none justify-center px-8 py-4 bg-brand-600 text-white rounded-3xl font-bold text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2 group">
             Book New Appointment
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>

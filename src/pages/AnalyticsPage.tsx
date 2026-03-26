@@ -189,7 +189,7 @@ export const AnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -198,12 +198,12 @@ export const AnalyticsPage: React.FC = () => {
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">Clinical Intelligence</h1>
           <p className="text-slate-500 text-lg">Deep insights into patient outcomes and practice performance.</p>
         </motion.div>
-        <div className="flex gap-3">
-          <button onClick={() => alert("Advanced analytical configurations and visual overrides are exclusively available in DocPilot Pro via our upcoming Customization Engine. Contact support to migrate.")} className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <button onClick={() => alert("Advanced analytical configurations and visual overrides are exclusively available in DocPilot Pro via our upcoming Customization Engine. Contact support to migrate.")} className="flex-1 md:flex-none justify-center px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
             <Filter className="w-4 h-4" />
             Customize View
           </button>
-          <button onClick={handleExportData} className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
+          <button onClick={handleExportData} className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2">
             <Download className="w-4 h-4" />
             Export Data
           </button>

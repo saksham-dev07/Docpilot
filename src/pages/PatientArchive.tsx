@@ -224,32 +224,10 @@ export const PatientArchive: React.FC = () => {
       orderBy('date', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const fsDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      try {
-        const bucketResult = await appwriteStorage.listFiles(APPWRITE_BUCKET_ID);
-        const externalAppwriteFiles = bucketResult.files
-          .filter(f => !fsDocs.some((fs: any) => fs.appwriteFileId === f.$id))
-          .map(f => ({
-            id: f.$id,
-            title: f.name,
-            name: f.name,
-            fileName: f.name,
-            type: 'Cloud Bucket',
-            doctorName: 'Manual Upload',
-            date: new Date(f.$createdAt).toLocaleDateString(),
-            size: `${(f.sizeOriginal / 1024 / 1024).toFixed(3)} MB`,
-            appwriteFileId: f.$id,
-            appwriteViewUrl: appwriteStorage.getFileView(APPWRITE_BUCKET_ID, f.$id),
-            appwriteDownloadUrl: appwriteStorage.getFileDownload(APPWRITE_BUCKET_ID, f.$id),
-          }));
-          
-        setRecords([...fsDocs, ...externalAppwriteFiles]);
-      } catch (err) {
-        console.error("Could not sync external Appwrite Bucket files:", err);
-        setRecords(fsDocs);
-      }
+      setRecords(fsDocs);
+      setLoading(false);
       
       setLoading(false);
     });
@@ -266,7 +244,7 @@ export const PatientArchive: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -275,17 +253,17 @@ export const PatientArchive: React.FC = () => {
           <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">My Medical Records</h1>
           <p className="text-slate-500 text-lg">Access and manage your complete medical history securely.</p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <button 
             onClick={() => setShowUploadModal(true)} 
-            className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2"
+            className="flex-1 md:flex-none justify-center px-6 py-3 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2"
           >
             <Upload className="w-4 h-4" />
             Upload File
           </button>
           <button 
             onClick={handleDownloadAll}
-            className="px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2"
+            className="flex-1 md:flex-none justify-center px-6 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download All
@@ -497,9 +475,9 @@ export const PatientArchive: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
           >
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
               <h3 className="text-2xl font-display font-bold text-slate-900 flex items-center gap-3">
                 <FileText className="w-6 h-6 text-brand-600" />
                 Record Details
@@ -512,7 +490,7 @@ export const PatientArchive: React.FC = () => {
               </button>
             </div>
             
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 flex-1 overflow-y-auto w-full">
               {viewRecord.type === 'Online Prescription' ? (
                 <>
                   <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 flex items-center justify-between">

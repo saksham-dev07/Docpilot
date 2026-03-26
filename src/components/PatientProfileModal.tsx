@@ -57,26 +57,6 @@ export const PatientProfileModal: React.FC<PatientProfileModalProps> = ({ patien
           
           let finalRecords = [...fsDocs];
           
-          try {
-            const { appwriteStorage, APPWRITE_BUCKET_ID } = await import('../lib/appwrite');
-            const bucketResult = await appwriteStorage.listFiles(APPWRITE_BUCKET_ID);
-            const externalAppwriteFiles = bucketResult.files
-              .filter(f => !fsDocs.some((fs: any) => fs.appwriteFileId === f.$id))
-              .map(f => ({
-                id: f.$id,
-                title: f.name,
-                name: f.name,
-                type: 'Cloud Bucket',
-                date: new Date(f.$createdAt).toLocaleDateString(),
-                appwriteFileId: f.$id,
-                appwriteViewUrl: appwriteStorage.getFileView(APPWRITE_BUCKET_ID, f.$id),
-              }));
-              
-            finalRecords = [...fsDocs, ...externalAppwriteFiles];
-          } catch (appwriteErr) {
-            console.error("Appwrite remote bucket fetch disabled:", appwriteErr);
-          }
-          
           setRecords(finalRecords);
         } catch (recordsErr) {
           console.error("Records query crashed:", recordsErr);
