@@ -30,6 +30,7 @@ export const DoctorDashboard: React.FC = () => {
   const [allAppointments, setAllAppointments] = useState<any[]>([]);
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+  const [patientPhotos, setPatientPhotos] = useState<Record<string, string>>({});
   const [activePatientProfileId, setActivePatientProfileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +44,9 @@ export const DoctorDashboard: React.FC = () => {
           const snap = await getDoc(doc(db, 'users', uid));
           if (snap.exists() && snap.data().firstName) {
             setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+            if (snap.data().photoURL) {
+              setPatientPhotos(prev => ({...prev, [uid]: snap.data().photoURL}));
+            }
           }
         } catch(e) {}
       }
@@ -249,7 +253,11 @@ export const DoctorDashboard: React.FC = () => {
             {appointments.length > 0 ? appointments.map((apt) => (
               <div key={apt.id} className="p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors group">
                 <div className="w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  <User className="w-6 h-6 text-slate-400" />
+                  {patientPhotos[apt.patientId] ? (
+                     <img src={patientPhotos[apt.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                     <User className="w-6 h-6 text-slate-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 
@@ -301,7 +309,11 @@ export const DoctorDashboard: React.FC = () => {
             {consultations.length > 0 ? consultations.map((cons) => (
               <div key={cons.id} className="p-6 flex items-center gap-6 hover:bg-slate-50/50 transition-colors group">
                 <div className="w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  <User className="w-6 h-6 text-slate-400" />
+                  {patientPhotos[cons.patientId] ? (
+                     <img src={patientPhotos[cons.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                     <User className="w-6 h-6 text-slate-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 

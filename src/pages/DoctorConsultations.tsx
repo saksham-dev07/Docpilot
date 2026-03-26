@@ -24,6 +24,7 @@ export const DoctorConsultations: React.FC = () => {
   const [consultations, setConsultations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+  const [patientPhotos, setPatientPhotos] = useState<Record<string, string>>({});
   const [activePatientProfileId, setActivePatientProfileId] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<{ doctorId: string, patientId: string, sessionContext: string } | null>(null);
 
@@ -36,6 +37,9 @@ export const DoctorConsultations: React.FC = () => {
           const snap = await getDoc(doc(db, 'users', uid));
           if (snap.exists() && snap.data().firstName) {
             setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+            if (snap.data().photoURL) {
+              setPatientPhotos(prev => ({...prev, [uid]: snap.data().photoURL}));
+            }
           }
         } catch(e) {}
       }
@@ -116,7 +120,11 @@ export const DoctorConsultations: React.FC = () => {
           </div>
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
             <div className="w-48 h-48 rounded-4xl bg-white/10 backdrop-blur-xl border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
-              <UserIcon className="w-20 h-20 text-white/20" />
+              {patientPhotos[liveConsultation.patientId] ? (
+                 <img src={patientPhotos[liveConsultation.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon className="w-20 h-20 text-white/20" />
+              )}
             </div>
             <div className="flex-1 text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
@@ -175,7 +183,11 @@ export const DoctorConsultations: React.FC = () => {
               className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-6 group"
             >
               <div className="w-20 h-20 rounded-3xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                <UserIcon className="w-8 h-8 text-slate-400" />
+                {patientPhotos[c.patientId] ? (
+                   <img src={patientPhotos[c.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                   <UserIcon className="w-8 h-8 text-slate-400" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-2">
@@ -230,7 +242,11 @@ export const DoctorConsultations: React.FC = () => {
                 className="bg-slate-50 p-8 rounded-4xl border border-slate-100 shadow-sm transition-all flex items-center gap-6 grayscale"
               >
                 <div className="w-20 h-20 rounded-3xl bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                  <UserIcon className="w-8 h-8 text-slate-400" />
+                  {patientPhotos[c.patientId] ? (
+                     <img src={patientPhotos[c.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                     <UserIcon className="w-8 h-8 text-slate-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-2">

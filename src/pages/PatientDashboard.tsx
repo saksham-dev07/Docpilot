@@ -421,8 +421,8 @@ export const PatientDashboard: React.FC = () => {
 
       {showVitalsModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h2 className="text-xl font-display font-bold text-slate-900">Log Current Vitals</h2>
               <button onClick={() => setShowVitalsModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-xl transition-all">
                 <X className="w-5 h-5" />
@@ -463,7 +463,7 @@ export const PatientDashboard: React.FC = () => {
                 alert("Failed to save vitals.");
               }
               setIsSubmittingVitals(false);
-            }} className="p-8 space-y-6">
+            }} className="p-8 space-y-6 overflow-y-auto flex-1 w-full">
               
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">

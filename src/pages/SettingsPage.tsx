@@ -47,10 +47,16 @@ export const SettingsPage: React.FC = () => {
 
     setUploadingImage(true);
     try {
-      const uniqueFileName = `profile_images/${auth.currentUser.uid}_${Date.now()}`;
-      const storageRef = ref(storage, uniqueFileName);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const { appwriteStorage, APPWRITE_BUCKET_ID } = await import('../lib/appwrite');
+      const { ID } = await import('appwrite');
+      
+      const response = await appwriteStorage.createFile(
+        APPWRITE_BUCKET_ID,
+        ID.unique(),
+        file
+      );
+
+      const downloadURL = appwriteStorage.getFileView(APPWRITE_BUCKET_ID, response.$id);
       
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, { photoURL: downloadURL });
@@ -59,7 +65,7 @@ export const SettingsPage: React.FC = () => {
       alert("Profile photo updated successfully!");
     } catch (error) {
       console.error("Error uploading image: ", error);
-      alert("Upload failed. Firebase Storage might be disabled or have restrictive rules.");
+      alert("Upload failed. Appwrite Server connection blocked or File too large.");
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploadingImage(false);

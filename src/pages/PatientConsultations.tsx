@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { ChatWidget } from '../components/ChatWidget';
 
@@ -22,6 +22,7 @@ export const PatientConsultations: React.FC = () => {
   const [consultations, setConsultations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeChat, setActiveChat] = useState<{ doctorId: string, patientId: string, sessionContext: string } | null>(null);
+  const [avatarsCache, setAvatarsCache] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -40,6 +41,18 @@ export const PatientConsultations: React.FC = () => {
       setConsultations(consData);
       setLoading(false);
     });
+
+    const fetchAvatars = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'doctor')));
+        const cache: Record<string, string> = {};
+        snap.forEach(doc => {
+           if (doc.data().photoURL) cache[doc.id] = doc.data().photoURL;
+        });
+        setAvatarsCache(cache);
+      } catch (err) {}
+    };
+    fetchAvatars();
 
     return () => unsubscribe();
   }, []);
@@ -90,7 +103,11 @@ export const PatientConsultations: React.FC = () => {
         >
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
             <div className="w-48 h-48 rounded-4xl bg-white/20 backdrop-blur-xl border border-white/20 overflow-hidden shrink-0 flex items-center justify-center">
-              <UserIcon className="w-20 h-20 text-white/20" />
+              {avatarsCache[liveConsultation.doctorId] ? (
+                <img src={avatarsCache[liveConsultation.doctorId]} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon className="w-20 h-20 text-white/20" />
+              )}
             </div>
             <div className="flex-1 text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md text-white rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
@@ -133,7 +150,11 @@ export const PatientConsultations: React.FC = () => {
           >
             <div className="flex justify-between items-start mb-6">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
-                <UserIcon className="w-8 h-8 text-slate-400" />
+                {avatarsCache[c.doctorId] ? (
+                  <img src={avatarsCache[c.doctorId]} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <UserIcon className="w-8 h-8 text-slate-400" />
+                )}
               </div>
               <div className="px-3 py-1 bg-slate-50 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest">
                 {c.date}
@@ -183,7 +204,11 @@ export const PatientConsultations: React.FC = () => {
               >
                 <div className="flex justify-between items-start mb-6">
                   <div className="w-16 h-16 rounded-2xl bg-slate-200 overflow-hidden flex items-center justify-center">
-                    <UserIcon className="w-8 h-8 text-slate-400" />
+                    {avatarsCache[c.doctorId] ? (
+                      <img src={avatarsCache[c.doctorId]} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon className="w-8 h-8 text-slate-400" />
+                    )}
                   </div>
                   <div className="px-3 py-1 bg-red-50 text-red-500 rounded-full text-[10px] font-black uppercase tracking-widest">
                     Missed • {c.date}

@@ -303,8 +303,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
             <div className="h-8 w-px bg-slate-100 mx-2" />
             <Link to={isDoctorPath ? '/doctor/settings' : '/patient/settings'} className="flex items-center gap-3 pl-2 pr-4 py-2 bg-slate-50 rounded-2xl hover:bg-brand-50 transition-all group">
-              <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                <User className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors overflow-hidden">
+                {userPhoto ? (
+                  <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
               </div>
               <span className="text-sm font-semibold text-slate-700 group-hover:text-brand-700">{userName.split(' ')[0] || 'Profile'}</span>
             </Link>

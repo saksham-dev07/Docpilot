@@ -28,6 +28,7 @@ export const DoctorAppointments: React.FC = () => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [rescheduleModal, setRescheduleModal] = useState<{ id: string, date: string, time: string } | null>(null);
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+  const [patientPhotos, setPatientPhotos] = useState<Record<string, string>>({});
   const [activePatientProfileId, setActivePatientProfileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +40,9 @@ export const DoctorAppointments: React.FC = () => {
           const snap = await getDoc(doc(db, 'users', uid));
           if (snap.exists() && snap.data().firstName) {
             setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+            if (snap.data().photoURL) {
+              setPatientPhotos(prev => ({...prev, [uid]: snap.data().photoURL}));
+            }
           }
         } catch(e) {}
       }
@@ -236,7 +240,11 @@ export const DoctorAppointments: React.FC = () => {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                        <UserIcon className="w-6 h-6 text-slate-400" />
+                        {patientPhotos[apt.patientId] ? (
+                           <img src={patientPhotos[apt.patientId]} alt="Patient" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                           <UserIcon className="w-6 h-6 text-slate-400" />
+                        )}
                       </div>
                       <div>
                         <p 

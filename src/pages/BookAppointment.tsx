@@ -205,7 +205,11 @@ export const BookAppointment: React.FC = () => {
                 >
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                      <UserIcon className="w-8 h-8 text-slate-400" />
+                      {doc.photoURL ? (
+                        <img src={doc.photoURL} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <UserIcon className="w-8 h-8 text-slate-400" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-slate-900 truncate">{doc.firstName} {doc.lastName}</h4>
@@ -374,8 +378,12 @@ export const BookAppointment: React.FC = () => {
             
             <div className="space-y-6 mb-10">
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl">
-                <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600">
-                  <UserIcon className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 overflow-hidden shrink-0">
+                  {selectedDoctor?.photoURL ? (
+                    <img src={selectedDoctor.photoURL} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserIcon className="w-6 h-6" />
+                  )}
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Doctor</p>
@@ -450,9 +458,9 @@ export const BookAppointment: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+            className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
           >
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
               <h3 className="text-2xl font-display font-bold text-slate-900">{isReschedule ? 'Confirm Reschedule' : 'Confirm Appointment'}</h3>
               <button 
                 onClick={() => setShowConfirmation(false)}
@@ -462,10 +470,14 @@ export const BookAppointment: React.FC = () => {
               </button>
             </div>
             
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 flex-1 overflow-y-auto w-full">
               <div className="flex items-start gap-4 p-5 bg-slate-50 rounded-3xl">
-                <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 shrink-0">
-                  <UserIcon className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 overflow-hidden shrink-0">
+                  {selectedDoctor?.photoURL ? (
+                    <img src={selectedDoctor.photoURL} alt="Doctor" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserIcon className="w-6 h-6" />
+                  )}
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Doctor</p>
