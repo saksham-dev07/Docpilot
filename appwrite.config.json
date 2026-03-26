@@ -1,0 +1,370 @@
+{
+    "projectId": "69c180ea00142eafac4e",
+    "projectName": "Docpilot",
+    "endpoint": "https://fra.cloud.appwrite.io/v1",
+    "settings": {
+        "services": {
+            "account": true,
+            "avatars": true,
+            "databases": true,
+            "locale": true,
+            "health": true,
+            "storage": true,
+            "teams": true,
+            "users": true,
+            "sites": true,
+            "functions": true,
+            "graphql": true,
+            "messaging": true
+        },
+        "auth": {
+            "methods": {
+                "jwt": true,
+                "phone": true,
+                "invites": true,
+                "anonymous": true,
+                "email-otp": true,
+                "magic-url": true,
+                "email-password": true
+            },
+            "security": {
+                "duration": 31536000,
+                "limit": 0,
+                "sessionsLimit": 10,
+                "passwordHistory": 0,
+                "passwordDictionary": false,
+                "personalDataCheck": false,
+                "sessionAlerts": false,
+                "mockNumbers": []
+            }
+        }
+    },
+    "tablesDB": [
+        {
+            "$id": "main",
+            "name": "DocpilotDB",
+            "enabled": true
+        }
+    ],
+    "tables": [
+        {
+            "$id": "users",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Users",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                {
+                    "key": "firstName",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "lastName",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "email",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 255,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "role",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "patientId",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "licenseNumber",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "createdAt",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false,
+                    "default": null
+                }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "appointments",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Appointments",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                {
+                    "key": "doctorId",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "patientId",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "patientName",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "date",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "time",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "type",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 100,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "status",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "consultations",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Consultations",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                {
+                    "key": "doctorId",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "patientId",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "patientName",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "date",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "time",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "status",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false,
+                    "default": null,
+                    "encrypt": false
+                }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "medical_records",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Medical Records",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                { "key": "name", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false },
+                { "key": "type", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "category", "type": "varchar", "required": false, "size": 100, "array": false, "default": null, "encrypt": false },
+                { "key": "size", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "date", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "status", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "doctorId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "patientId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "appwriteFileId", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "records",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Records",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                { "key": "doctorId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "patientId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "patientName", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false },
+                { "key": "title", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false },
+                { "key": "name", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false },
+                { "key": "type", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "category", "type": "varchar", "required": false, "size": 100, "array": false, "default": null, "encrypt": false },
+                { "key": "date", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "invoices",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "databaseId": "main",
+            "name": "Invoices",
+            "enabled": true,
+            "documentSecurity": true,
+            "columns": [
+                { "key": "doctorId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "patientId", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "patientName", "type": "varchar", "required": false, "size": 255, "array": false, "default": null, "encrypt": false },
+                { "key": "amount", "type": "double", "required": false, "array": false, "default": null },
+                { "key": "status", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "method", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false },
+                { "key": "date", "type": "varchar", "required": false, "size": 50, "array": false, "default": null, "encrypt": false }
+            ],
+            "indexes": []
+        }
+    ],
+    "buckets": [
+        {
+            "$id": "69c18187000ba824e0a1",
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ],
+            "fileSecurity": false,
+            "name": "medical_records",
+            "enabled": true,
+            "maximumFileSize": 50000000,
+            "allowedFileExtensions": [],
+            "compression": "none",
+            "encryption": true,
+            "antivirus": true
+        }
+    ],
+    "teams": [],
+    "topics": []
+}

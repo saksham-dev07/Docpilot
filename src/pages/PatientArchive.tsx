@@ -16,8 +16,8 @@ import {
   Loader2,
   Trash
 } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 import { ID } from 'appwrite';
 import { appwriteStorage, APPWRITE_BUCKET_ID } from '../lib/appwrite';
 
@@ -158,12 +158,17 @@ export const PatientArchive: React.FC = () => {
   const handleDelete = async (record: any) => {
     if (window.confirm(`Are you sure you want to completely delete "${record.name || record.title || 'this document'}"?`)) {
       try {
-        await deleteDoc(doc(db, 'records', record.id));
+        if (record.id) {
+          await databases.deleteDocument(APPWRITE_DATABASE_ID, 'records', record.id);
+        }
         if (record.appwriteFileId) {
           await appwriteStorage.deleteFile(APPWRITE_BUCKET_ID, record.appwriteFileId);
         } else if (record.localFileId) {
           await deleteLocalFile(record.localFileId);
         }
+        
+        // Refresh local state
+        setRecords(prev => prev.filter(r => r.id !== record.id));
       } catch (err) {
         console.error("Failed to delete record: ", err);
         alert("Deletion failed.");
@@ -173,7 +178,7 @@ export const PatientArchive: React.FC = () => {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser || !uploadName || !selectedFile) return;
+    if (!uploadName || !selectedFile) return;
 
     if (selectedFile.size > 20 * 1024 * 1024) {
       alert('File too large. Please keep Appwrite uploads under 20MB.');
@@ -182,6 +187,7 @@ export const PatientArchive: React.FC = () => {
 
     setIsUploading(true);
     try {
+      const currentUser = await account.get();
       const response = await appwriteStorage.createFile(
         APPWRITE_BUCKET_ID,
         ID.unique(),
@@ -191,17 +197,16 @@ export const PatientArchive: React.FC = () => {
       const viewUrl = appwriteStorage.getFileView(APPWRITE_BUCKET_ID, response.$id);
       const downloadUrl = appwriteStorage.getFileDownload(APPWRITE_BUCKET_ID, response.$id);
 
-      await addDoc(collection(db, 'records'), {
-        patientId: auth.currentUser.uid,
+      await databases.createDocument(APPWRITE_DATABASE_ID, 'records', ID.unique(), {
+        patientId: currentUser.$id,
         name: uploadName,
         type: uploadType,
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         size: `${(selectedFile.size / 1024 / 1024).toFixed(3)} MB`, 
         appwriteFileId: response.$id,
-        appwriteViewUrl: viewUrl,
-        appwriteDownloadUrl: downloadUrl,
+        appwriteViewUrl: viewUrl.toString(),
+        appwriteDownloadUrl: downloadUrl.toString(),
         fileName: selectedFile.name,
-        createdAt: new Date().toISOString()
       });
       
       setShowUploadModal(false);
@@ -216,45 +221,60 @@ export const PatientArchive: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const q = query(
-      collection(db, 'records'),
-      where('patientId', '==', auth.currentUser.uid),
-      orderBy('date', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const fsDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
+    let interval: NodeJS.Timeout | null = null;
+    let isMounted = true;
+    const init = async () => {
+      let currentUser: any;
       try {
-        const bucketResult = await appwriteStorage.listFiles(APPWRITE_BUCKET_ID);
-        const externalAppwriteFiles = bucketResult.files
-          .filter(f => !fsDocs.some((fs: any) => fs.appwriteFileId === f.$id))
-          .map(f => ({
-            id: f.$id,
-            title: f.name,
-            name: f.name,
-            fileName: f.name,
-            type: 'Cloud Bucket',
-            doctorName: 'Manual Upload',
-            date: new Date(f.$createdAt).toLocaleDateString(),
-            size: `${(f.sizeOriginal / 1024 / 1024).toFixed(3)} MB`,
-            appwriteFileId: f.$id,
-            appwriteViewUrl: appwriteStorage.getFileView(APPWRITE_BUCKET_ID, f.$id),
-            appwriteDownloadUrl: appwriteStorage.getFileDownload(APPWRITE_BUCKET_ID, f.$id),
-          }));
-          
-        setRecords([...fsDocs, ...externalAppwriteFiles]);
-      } catch (err) {
-        console.error("Could not sync external Appwrite Bucket files:", err);
-        setRecords(fsDocs);
-      }
-      
-      setLoading(false);
-    });
+        currentUser = await account.get();
+      } catch(e) { return; }
 
-    return () => unsubscribe();
+      const fetchRecords = async () => {
+        try {
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'records', [
+            Query.equal('patientId', currentUser.$id)
+          ]);
+
+          const fsDocs = snap.documents.map(doc => ({ id: doc.$id, ...doc }));
+
+          try {
+            const bucketResult = await appwriteStorage.listFiles(APPWRITE_BUCKET_ID);
+            const externalAppwriteFiles = bucketResult.files
+              .filter(f => !fsDocs.some((fs: any) => fs.appwriteFileId === f.$id))
+              .map(f => ({
+                id: f.$id,
+                title: f.name,
+                name: f.name,
+                fileName: f.name,
+                type: 'Cloud Bucket',
+                doctorName: 'Manual Upload',
+                date: new Date(f.$createdAt).toLocaleDateString(),
+                size: `${(f.sizeOriginal / 1024 / 1024).toFixed(3)} MB`,
+                appwriteFileId: f.$id,
+                appwriteViewUrl: appwriteStorage.getFileView(APPWRITE_BUCKET_ID, f.$id),
+                appwriteDownloadUrl: appwriteStorage.getFileDownload(APPWRITE_BUCKET_ID, f.$id),
+              }));
+              
+            setRecords([...fsDocs, ...externalAppwriteFiles]);
+          } catch (err) {
+            console.error("Could not sync external Appwrite Bucket files:", err);
+            setRecords(fsDocs);
+          }
+          
+          setLoading(false);
+        } catch(e) { setLoading(false); }
+      };
+
+      fetchRecords();
+      if (!isMounted) return;
+      interval = setInterval(fetchRecords, 5000);
+    };
+    init();
+
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   const filteredRecords = records.filter(record => 

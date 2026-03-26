@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase';
+import { ID, OAuthProvider } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { Mail, Lock, User, ArrowRight, ShieldCheck, Stethoscope, Chrome } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -27,45 +26,11 @@ export const SignupPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      // Check if user document already exists
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const existingRole = docSnap.data().role;
-        if (existingRole !== role) {
-          await auth.signOut();
-          setError(`An account already exists with the role of ${existingRole}. Please sign in through the ${existingRole} portal.`);
-          setLoading(false);
-          return;
-        }
-      } else {
-        const [firstName, ...lastNameParts] = (user.displayName || '').split(' ');
-        const userData: any = {
-          uid: user.uid,
-          email: user.email,
-          firstName: firstName || 'User',
-          lastName: lastNameParts.join(' ') || '',
-          role: role,
-          createdAt: new Date().toISOString(),
-        };
-
-        if (role === 'doctor') {
-          userData.licenseNumber = 'PENDING';
-        } else {
-          userData.patientId = `P-${Math.floor(10000 + Math.random() * 90000)}`;
-        }
-
-        await setDoc(docRef, userData);
-      }
-      
-      navigate(role === 'doctor' ? '/doctor' : '/patient');
+      // Note: Appwrite OAuth uses a redirect flow. 
+      // User profile document creation on first OAuth login will require an Appwrite Event Function or a profile completion screen.
+      account.createOAuth2Session(OAuthProvider.Google, `${window.location.origin}${role === 'doctor' ? '/doctor' : '/patient'}`, window.location.href);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -76,11 +41,10 @@ export const SignupPage: React.FC = () => {
     setError(null);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      const userAccount = await account.create(ID.unique(), formData.email, formData.password, `${formData.firstName} ${formData.lastName}`);
+      await account.createEmailPasswordSession(formData.email, formData.password);
 
       const userData: any = {
-        uid: user.uid,
         email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -94,14 +58,10 @@ export const SignupPage: React.FC = () => {
         userData.patientId = `P-${Math.floor(10000 + Math.random() * 90000)}`;
       }
 
-      await setDoc(doc(db, 'users', user.uid), userData);
+      await databases.createDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, userAccount.$id, userData);
       navigate(role === 'doctor' ? '/doctor' : '/patient');
     } catch (err: any) {
-      if (err.code === 'auth/operation-not-allowed') {
-        setError("Email/Password signup is not enabled in Firebase. Please use Google Signup or enable it in the console.");
-      } else {
-        setError(err.message);
-      }
+      setError(err.message || "Failed to create account.");
     } finally {
       setLoading(false);
     }

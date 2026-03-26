@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { ChatWidget } from '../components/ChatWidget';
 
 export const PatientConsultations: React.FC = () => {
@@ -23,25 +23,30 @@ export const PatientConsultations: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeChat, setActiveChat] = useState<{ doctorId: string, patientId: string, sessionContext: string } | null>(null);
 
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
   useEffect(() => {
-    if (!auth.currentUser) return;
 
-    const q = query(
-      collection(db, 'consultations'),
-      where('patientId', '==', auth.currentUser.uid),
-      orderBy('date', 'desc')
-    );
+    const fetchCons = async () => {
+      try {
+        const currentUser = await account.get();
+        setCurrentUserId(currentUser.$id);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const consData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).filter(c => !c.id.endsWith('_chat'));
-      setConsultations(consData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+        const fetchData = async () => {
+          try {
+             const consData = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+               Query.equal('patientId', currentUser.$id),
+               Query.orderDesc('date'),
+               Query.limit(100)
+             ]);
+             setConsultations(consData.documents.map(d => ({id: d.$id, ...d})).filter(c => !c.id.endsWith('_chat')));
+             setLoading(false);
+          } catch(e) { setLoading(false); }
+        };
+        fetchData();
+      } catch(e) { setLoading(false); }
+    };
+    fetchCons();
   }, []);
 
   const isPast = (date: string, time: string) => {
@@ -100,7 +105,7 @@ export const PatientConsultations: React.FC = () => {
               <h2 className="text-4xl font-display font-bold mb-2">{liveConsultation.doctorName}</h2>
               <p className="text-brand-100 text-lg mb-8 italic">"Ready for our follow-up regarding your recent consultation."</p>
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                <button onClick={() => setActiveChat({ doctorId: liveConsultation.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${liveConsultation.date} • ${liveConsultation.time}` })} className="px-8 py-4 bg-white text-brand-600 rounded-2xl font-bold hover:bg-brand-50 transition-all flex items-center gap-2">
+                <button onClick={() => setActiveChat({ doctorId: liveConsultation.doctorId, patientId: currentUserId || '', sessionContext: `${liveConsultation.date} • ${liveConsultation.time}` })} className="px-8 py-4 bg-white text-brand-600 rounded-2xl font-bold hover:bg-brand-50 transition-all flex items-center gap-2">
                   <MessageSquare className="w-5 h-5"/> Start Chat Session
                 </button>
                 <button className="px-8 py-4 bg-white/10 text-white rounded-2xl font-bold hover:bg-white/20 transition-all">
@@ -155,9 +160,9 @@ export const PatientConsultations: React.FC = () => {
                <Link to="/book" state={{ isReschedule: true, oldConsultationId: c.id, rescheduleCount: c.rescheduleCount || 0 }} className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all text-center">
                 Reschedule
               </Link>
-               <button onClick={() => setActiveChat({ doctorId: c.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${c.date} • ${c.time}` })} className="relative flex-1 py-3 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 text-center flex items-center justify-center gap-2">
+               <button onClick={() => setActiveChat({ doctorId: c.doctorId, patientId: currentUserId || '', sessionContext: `${c.date} • ${c.time}` })} className="relative flex-1 py-3 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 text-center flex items-center justify-center gap-2">
                 <MessageSquare className="w-4 h-4" /> Start Chat
-                {c.messages?.length > 0 && c.messages[c.messages.length - 1].senderId !== auth.currentUser?.uid && !c.messages[c.messages.length - 1].read && (
+                {c.messages?.length > 0 && c.messages[c.messages.length - 1].senderId !== currentUserId && !c.messages[c.messages.length - 1].read && (
                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
                 )}
               </button>
@@ -239,7 +244,7 @@ export const PatientConsultations: React.FC = () => {
           doctorId={activeChat.doctorId}
           patientId={activeChat.patientId}
           sessionContext={activeChat.sessionContext}
-          currentUserId={auth.currentUser?.uid || ''} 
+          currentUserId={currentUserId || ''} 
           currentUserName="Patient" 
           onClose={() => setActiveChat(null)} 
         />

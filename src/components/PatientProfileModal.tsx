@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Activity, FileText, Calendar as CalendarIcon, Clock, Loader2, Heart, Droplets, Thermometer, AlertCircle, ArrowRight } from 'lucide-react';
-import { db, auth } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 
 interface PatientProfileModalProps {
   patientId: string;
@@ -19,28 +19,26 @@ export const PatientProfileModal: React.FC<PatientProfileModalProps> = ({ patien
     const fetchPatientData = async () => {
       setLoading(true);
       try {
-        const userSnap = await getDoc(doc(db, 'users', patientId));
-        if (userSnap.exists()) {
-          setPatientData(userSnap.data());
+        const userSnap = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, patientId).catch(() => null);
+        if (userSnap) {
+          setPatientData(userSnap);
         }
 
+        const currentUser = await account.get();
         // Fetch past appointments/consultations securely preventing global permission exceptions
-        const aptsQuery = query(
-          collection(db, 'appointments'), 
-          where('patientId', '==', patientId),
-          where('doctorId', '==', auth.currentUser?.uid)
-        );
-        const consQuery = query(
-          collection(db, 'consultations'), 
-          where('patientId', '==', patientId),
-          where('doctorId', '==', auth.currentUser?.uid)
-        );
-        
         try {
-          const [aptsSnap, consSnap] = await Promise.all([getDocs(aptsQuery), getDocs(consQuery)]);
+          const aptsSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+            Query.equal('patientId', patientId),
+            Query.equal('doctorId', currentUser.$id)
+          ]);
+          const consSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+            Query.equal('patientId', patientId),
+            Query.equal('doctorId', currentUser.$id)
+          ]);
+
           const allHistory = [
-            ...aptsSnap.docs.map(d => ({ id: d.id, ...d.data(), source: 'Clinic Visit' })),
-            ...consSnap.docs.map(d => ({ id: d.id, ...d.data(), source: 'Video Call' })).filter(c => !c.id.endsWith('_chat'))
+            ...aptsSnap.documents.map(d => ({ id: d.$id, ...d, source: 'Clinic Visit' })),
+            ...consSnap.documents.map(d => ({ id: d.$id, ...d, source: 'Video Call' })).filter(c => !c.id.endsWith('_chat'))
           ] as any[];
           
           allHistory.sort((a,b) => b.date.localeCompare(a.date));
@@ -51,9 +49,10 @@ export const PatientProfileModal: React.FC<PatientProfileModalProps> = ({ patien
 
         // Fetch user records explicitly cleanly wrapping Appwrite cloud components
         try {
-          const recordsQuery = query(collection(db, 'records'), where('patientId', '==', patientId));
-          const recordsSnap = await getDocs(recordsQuery);
-          const fsDocs = recordsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const recordsSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'records', [
+            Query.equal('patientId', patientId)
+          ]).catch(() => ({ documents: [] }));
+          const fsDocs = recordsSnap.documents.map((d: any) => ({ id: d.$id, ...d }));
           
           let finalRecords = [...fsDocs];
           

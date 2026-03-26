@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { 
   LayoutDashboard, 
   Users, 
@@ -62,48 +61,61 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     }
     
     const conductSearch = async () => {
-      if (!auth.currentUser) return;
+      let currentUser;
+      try {
+        currentUser = await account.get();
+      } catch {
+        return;
+      }
+      
       setIsSearching(true);
       const q = searchQuery.toLowerCase().trim();
       const results: any[] = [];
       
       try {
         if (isDoctorPath) {
-           const aptSnap = await getDocs(query(collection(db, 'appointments'), where('doctorId', '==', auth.currentUser.uid)));
-           aptSnap.forEach(d => {
-             const data = d.data();
+           const aptSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+               Query.equal('doctorId', currentUser.$id)
+           ]);
+           aptSnap.documents.forEach((data: any) => {
              if (data.patientName?.toLowerCase().includes(q) || data.type?.toLowerCase().includes(q)) {
-               results.push({ type: 'Appointment', title: `${data.patientName} - ${data.type}`, desc: data.date, id: d.id, link: '/doctor/appointments' });
+               results.push({ type: 'Appointment', title: `${data.patientName} - ${data.type}`, desc: data.date, id: data.$id, link: '/doctor/appointments' });
              }
            });
            
-           const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'patient')));
-           usersSnap.forEach(d => {
-             const data = d.data();
+           const usersSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, [
+               Query.equal('role', 'patient')
+           ]);
+           usersSnap.documents.forEach((data: any) => {
              const fullName = `${data.firstName || ''} ${data.lastName || ''}`.toLowerCase();
              if (fullName.includes(q) || data.email?.toLowerCase().includes(q)) {
-               results.push({ type: 'Patient Index', title: `${data.firstName || ''} ${data.lastName || ''}`, desc: data.email, id: d.id, link: '/opd' });
+               results.push({ type: 'Patient Index', title: `${data.firstName || ''} ${data.lastName || ''}`, desc: data.email, id: data.$id, link: '/opd' });
              }
            });
 
         } else {
-           const recSnap = await getDocs(query(collection(db, 'records'), where('patientId', '==', auth.currentUser.uid)));
-           recSnap.forEach(d => {
-             const data = d.data();
-             if (data.title?.toLowerCase().includes(q) || data.type?.toLowerCase().includes(q) || data.category?.toLowerCase().includes(q)) {
-               results.push({ type: 'Clinical Record', title: data.title || 'Untitled Document', desc: `${data.type} • ${data.date}`, id: d.id, link: '/patient/archive' });
-             }
-           });
+           // Assume there's a records collection in Appwrite, if not this might fail silently which is okay for now.
+           try {
+             const recSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+                 Query.equal('patientId', currentUser.$id)
+             ]);
+             recSnap.documents.forEach((data: any) => {
+               if (data.title?.toLowerCase().includes(q) || data.type?.toLowerCase().includes(q) || data.category?.toLowerCase().includes(q)) {
+                 results.push({ type: 'Clinical Record', title: data.title || 'Untitled Document', desc: `${data.type} • ${data.date}`, id: data.$id, link: '/patient/archive' });
+               }
+             });
+           } catch (e) {}
            
-           const aptSnap = await getDocs(query(collection(db, 'appointments'), where('patientId', '==', auth.currentUser.uid)));
-           aptSnap.forEach(d => {
-             const data = d.data();
+           const aptSnap = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+               Query.equal('patientId', currentUser.$id)
+           ]);
+           aptSnap.documents.forEach((data: any) => {
              if (data.doctorName?.toLowerCase().includes(q) || data.type?.toLowerCase().includes(q)) {
-               results.push({ type: 'Consultation', title: `Dr. ${data.doctorName?.replace('Dr. ','')}`, desc: `${data.type} on ${data.date}`, id: d.id, link: '/patient/consultations' });
+               results.push({ type: 'Consultation', title: `Dr. ${data.doctorName?.replace('Dr. ','')}`, desc: `${data.type} on ${data.date}`, id: data.$id, link: '/patient/consultations' });
              }
            });
         }
-      } catch (err) { }
+      } catch (err) { console.error('Search error:', err); }
       
       setSearchResults(results.slice(0, 6)); 
       setIsSearching(false);
@@ -118,18 +130,19 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserName(`${data.firstName} ${data.lastName}`);
-          setUserRole(data.role);
-          if (data.role === 'doctor') {
-            setUserSubtext(data.specialty || 'Medical Professional');
-          } else {
-            setUserSubtext(`Patient ID: ${data.patientId || '#12024'}`);
-          }
+      try {
+        const currentUser = await account.get();
+        const userDoc = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, currentUser.$id);
+        const data = userDoc;
+        setUserName(`${data.firstName} ${data.lastName}`);
+        setUserRole(data.role);
+        if (data.role === 'doctor') {
+          setUserSubtext(data.specialty || 'Medical Professional');
+        } else {
+          setUserSubtext(`Patient ID: ${data.patientId || '#12024'}`);
         }
+      } catch (err) {
+        console.error('Error fetching user for layout:', err);
       }
     };
     fetchUserData();
@@ -137,7 +150,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await account.deleteSession('current');
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);

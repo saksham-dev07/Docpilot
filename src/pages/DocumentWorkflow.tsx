@@ -16,10 +16,8 @@ import {
   Activity
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
-import { ID } from 'appwrite';
-import { appwriteStorage, APPWRITE_BUCKET_ID } from '../lib/appwrite';
+import { Query, ID } from 'appwrite';
+import { appwriteStorage, APPWRITE_BUCKET_ID, account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 
 export const DocumentWorkflow: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -35,40 +33,62 @@ export const DocumentWorkflow: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    let interval: NodeJS.Timeout | null = null;
+    let isMounted = true;
+    const init = async () => {
+      let currentUser: any;
+      try {
+        currentUser = await account.get();
+      } catch(e) { return; }
 
-    const q = query(
-      collection(db, 'medical_records'),
-      where('doctorId', '==', auth.currentUser.uid)
-    );
+      const fetchDocs = async () => {
+        try {
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'medical_records', [
+            Query.equal('doctorId', currentUser.$id),
+            // The original was querying 'medical_records' by doctorId
+            Query.limit(100)
+          ]);
+          
+          const recordsData = snap.documents.map(doc => ({
+            id: doc.$id,
+            ...doc
+          }));
+          
+          setDocuments(recordsData);
+          
+          const pending = recordsData.filter((doc: any) => doc.status === 'Pending Review').length;
+          const verified = recordsData.filter((doc: any) => doc.status === 'Verified').length;
+          
+          setStats([
+            { ...stats[0], count: pending.toString() },
+            { ...stats[1], count: verified.toString() },
+            { ...stats[2], count: '0' }
+          ]);
+          
+          setLoading(false);
+        } catch(e) { setLoading(false); }
+      };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const recordsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setDocuments(recordsData);
-      
-      // Update stats
-      const pending = recordsData.filter((doc: any) => doc.status === 'Pending Review').length;
-      const verified = recordsData.filter((doc: any) => doc.status === 'Verified').length;
-      
-      setStats([
-        { ...stats[0], count: pending.toString() },
-        { ...stats[1], count: verified.toString() },
-        { ...stats[2], count: '0' } // Mocking missing info for now
-      ]);
-      
-      setLoading(false);
-    });
+      fetchDocs();
+      if (!isMounted) return;
+      interval = setInterval(fetchDocs, 5000);
+    };
+    init();
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
+    if (!file) return;
+    
+    let currentUser: any;
+    try {
+      currentUser = await account.get();
+    } catch(e) { return; }
     
     if (file.size > 20 * 1024 * 1024) {
       alert("File is too large securely bypassing 20MB limit.");
@@ -84,7 +104,7 @@ export const DocumentWorkflow: React.FC = () => {
       const fileExt = file.name.split('.').pop()?.toUpperCase() || 'DOC';
       const isImg = ['JPG', 'JPEG', 'PNG', 'WEBP', 'DICOM'].includes(fileExt);
 
-      await addDoc(collection(db, 'medical_records'), {
+      await databases.createDocument(APPWRITE_DATABASE_ID, 'medical_records', ID.unique(), {
         name: file.name,
         type: fileExt,
         category: isImg ? 'Imaging' : 'Reports',
@@ -92,10 +112,10 @@ export const DocumentWorkflow: React.FC = () => {
         size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
         patientName: 'Unassigned',
         status: 'Pending Review',
-        doctorId: auth.currentUser.uid,
+        doctorId: currentUser.$id,
         appwriteFileId: response.$id,
-        appwriteViewUrl: viewUrl,
-        appwriteDownloadUrl: downloadUrl
+        appwriteViewUrl: viewUrl.toString(),
+        appwriteDownloadUrl: downloadUrl.toString()
       });
     } catch(err) {
       console.error(err);

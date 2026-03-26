@@ -20,8 +20,7 @@ import {
   Info
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile Information', icon: User, desc: 'Update your personal details and professional bio.' },
@@ -53,27 +52,25 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (auth.currentUser) {
+      try {
+        const currentUser = await account.get();
         try {
-          const docRef = doc(db, 'users', auth.currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUserData(data);
-            setFormData({
-              firstName: data.firstName || '',
-              lastName: data.lastName || '',
-              specialty: data.specialty || '',
-              phone: data.phone || '',
-              location: data.location || '',
-              bio: data.bio || '',
-              experience: data.experience || '',
-              consultationFee: data.consultationFee || ''
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
+          const docSnap = await databases.getDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id);
+          const data = docSnap as any;
+          setUserData(data);
+          setFormData({
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            specialty: data.specialty || '',
+            phone: data.phone || '',
+            location: data.location || '',
+            bio: data.bio || '',
+            experience: data.experience || '',
+            consultationFee: data.consultationFee || ''
+          });
+        } catch(e) {}
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
       setLoading(false);
     };
@@ -81,16 +78,15 @@ export const SettingsPage: React.FC = () => {
   }, []);
 
   const handleSave = async () => {
-    if (!auth.currentUser) return;
     setSaving(true);
     setSuccess(false);
     try {
-      const docRef = doc(db, 'users', auth.currentUser.uid);
-      await updateDoc(docRef, {
+      const currentUser = await account.get();
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id, {
         ...formData,
         updatedAt: new Date().toISOString()
       });
-      setUserData(prev => ({ ...prev, ...formData }));
+      setUserData((prev: any) => ({ ...prev, ...formData }));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {

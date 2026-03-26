@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { Models } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from './lib/appwrite';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
@@ -26,25 +25,31 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: 'doctor' | 'patient' }> = ({ children, allowedRole }) => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setRole(userDoc.data().role);
+    const checkAuth = async () => {
+      try {
+        const currentUser = await account.get();
+        setUser(currentUser);
+        try {
+          const userDoc = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, currentUser.$id);
+          setRole(userDoc.role);
+        } catch (dbErr) {
+          console.warn('User document not found or error fetching role', dbErr);
+          setRole(null);
         }
-      } else {
+      } catch (error) {
+        // User not logged in or session invalid
         setUser(null);
         setRole(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    checkAuth();
   }, []);
 
   if (loading) {

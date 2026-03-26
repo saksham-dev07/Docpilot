@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { doc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { client, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { X, Send, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
@@ -29,21 +28,30 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ doctorId, patientId, ses
   const chatId = `${doctorId}_${patientId}_chat`;
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'consultations', chatId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+
+    const fetchMessages = async () => {
+      try {
+        const docSnap = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, chatId);
+        const data = docSnap;
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
           // Auto-mark as read natively
           const lastMsg = data.messages[data.messages.length - 1];
           if (lastMsg && lastMsg.senderId !== currentUserId && !lastMsg.read) {
             const updatedMessages = data.messages.map((m: any) => ({ ...m, read: true }));
-            updateDoc(doc(db, 'consultations', chatId), { messages: updatedMessages }).catch(console.error);
+            await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, chatId, { messages: updatedMessages }).catch(console.error);
           }
         }
+      } catch (e) {
+        // Doc might not exist yet
       }
-    });
-    return () => unsub();
+    };
+
+    fetchMessages();
+
+    const interval = setInterval(fetchMessages, 3000);
+
+    return () => clearInterval(interval);
   }, [chatId, currentUserId]);
 
   useEffect(() => {
@@ -64,18 +72,24 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ doctorId, patientId, ses
 
     setInputText('');
     try {
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(doc(db, 'consultations', chatId), { 
-        doctorId,
-        patientId,
-        doctorName: currentUserId === doctorId ? currentUserName : "Doctor",
-        patientName: currentUserId === patientId ? currentUserName : "Patient",
-        date: new Date().toISOString().split('T')[0],
-        time: '00:00',
-        status: 'Completed',
-        createdAt: new Date().toISOString(),
-        messages: arrayUnion(newMessage) 
-      }, { merge: true });
+      try {
+         const existingDoc = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, chatId);
+         await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, chatId, {
+            messages: [...(existingDoc.messages || []), newMessage]
+         });
+      } catch (e) {
+         // Create it
+         await databases.createDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, chatId, {
+            doctorId,
+            patientId,
+            doctorName: currentUserId === doctorId ? currentUserName : "Doctor",
+            patientName: currentUserId === patientId ? currentUserName : "Patient",
+            date: new Date().toISOString().split('T')[0],
+            time: '00:00',
+            status: 'Completed',
+            messages: [newMessage]
+         });
+      }
     } catch (err: any) {
       console.error('Failed to send message:', err);
       alert('Error: ' + err.message);

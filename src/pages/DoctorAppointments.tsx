@@ -13,8 +13,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { ChatWidget } from '../components/ChatWidget';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 
@@ -29,15 +29,18 @@ export const DoctorAppointments: React.FC = () => {
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
   const [activePatientProfileId, setActivePatientProfileId] = useState<string | null>(null);
 
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [currentUserName, setCurrentUserName] = useState<string>('');
+
   useEffect(() => {
     const uids = [...new Set(appointments.map(a => a.patientId).filter(Boolean))];
     uids.forEach(async (uidRaw) => {
       const uid = uidRaw as string;
       if (!patientNames[uid]) {
         try {
-          const snap = await getDoc(doc(db, 'users', uid));
-          if (snap.exists() && snap.data().firstName) {
-            setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+          const snap = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, uid);
+          if (snap.firstName) {
+            setPatientNames(prev => ({...prev, [uid]: `${snap.firstName} ${snap.lastName}`}));
           }
         } catch(e) {}
       }
@@ -45,21 +48,30 @@ export const DoctorAppointments: React.FC = () => {
   }, [appointments]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    const fetchApts = async () => {
+      try {
+        const currentUser = await account.get();
+        setCurrentUserId(currentUser.$id);
+        setCurrentUserName(currentUser.name);
+        
+        const fetchData = async () => {
+          const aptsData = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+            Query.equal('doctorId', currentUser.$id),
+            Query.limit(100),
+            Query.orderAsc('date')
+          ]);
+          setAppointments(aptsData.documents.map(d => ({ id: d.$id, ...d })));
+          setLoading(false);
+        };
+        fetchData();
 
-    const q = query(
-      collection(db, 'appointments'),
-      where('doctorId', '==', auth.currentUser.uid),
-      orderBy('date', 'asc')
-    );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const apts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAppointments(apts);
-      setLoading(false);
-    });
+      } catch (e) {
+        setLoading(false);
+      }
+    };
+    fetchApts();
 
-    return () => unsubscribe();
   }, []);
 
   const filteredAppointments = appointments.filter(apt => {
@@ -253,7 +265,7 @@ export const DoctorAppointments: React.FC = () => {
                     <select 
                       value={apt.priority || 'Medium'}
                       onChange={async (e) => {
-                        await updateDoc(doc(db, 'appointments', apt.id), { priority: e.target.value });
+                        await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, apt.id, { priority: e.target.value });
                       }}
                       className={cn(
                         "text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded-lg border-2 cursor-pointer outline-none transition-all",
@@ -275,7 +287,7 @@ export const DoctorAppointments: React.FC = () => {
                         title="Live Chat"
                       >
                         <MessageSquare className="w-5 h-5" />
-                        {apt.messages?.length > 0 && apt.messages[apt.messages.length - 1].senderId !== auth.currentUser?.uid && !apt.messages[apt.messages.length - 1].read && (
+                        {apt.messages?.length > 0 && apt.messages[apt.messages.length - 1].senderId !== currentUserId && !apt.messages[apt.messages.length - 1].read && (
                           <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
                         )}
                       </button>
@@ -289,7 +301,7 @@ export const DoctorAppointments: React.FC = () => {
                       <button 
                         onClick={async () => {
                            if(window.confirm(`Permanently cancel appointment for ${apt.patientName}?`)) {
-                              await updateDoc(doc(db, 'appointments', apt.id), { status: 'Cancelled' });
+                              await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, apt.id, { status: 'Cancelled' });
                            }
                         }}
                         className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
@@ -330,7 +342,7 @@ export const DoctorAppointments: React.FC = () => {
                <button onClick={() => setRescheduleModal(null)} className="flex-1 py-3 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-xl transition-all">Cancel Move</button>
                <button onClick={async () => {
                   try {
-                    await updateDoc(doc(db, 'appointments', rescheduleModal.id), { date: rescheduleModal.date, time: rescheduleModal.time, status: 'Rescheduled' });
+                    await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, rescheduleModal.id, { date: rescheduleModal.date, time: rescheduleModal.time, status: 'Rescheduled' });
                     setRescheduleModal(null);
                   } catch (e) { alert("Failed to secure new timeslot"); }
                }} className="flex-1 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl transition-all shadow-xl shadow-brand-500/20">Confirm Shift</button>
@@ -343,8 +355,8 @@ export const DoctorAppointments: React.FC = () => {
         <ChatWidget 
           documentId={activeChatId} 
           collectionName="appointments" 
-          currentUserId={auth.currentUser?.uid || ''} 
-          currentUserName={auth.currentUser?.displayName || 'Doctor'} 
+          currentUserId={currentUserId} 
+          currentUserName={currentUserName || 'Doctor'} 
           onClose={() => setActiveChatId(null)} 
         />
       )}

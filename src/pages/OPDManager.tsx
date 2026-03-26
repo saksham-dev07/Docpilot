@@ -13,8 +13,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 import { Link } from 'react-router-dom';
 
 export const OPDManager: React.FC = () => {
@@ -28,46 +28,54 @@ export const OPDManager: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
 
-    const q = query(
-      collection(db, 'appointments'),
-      where('doctorId', '==', auth.currentUser.uid)
-    );
+    const init = async () => {
+      let currentUser: any;
+      try {
+        currentUser = await account.get();
+      } catch(e) { return; }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const appointmentsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      
-      const todayAppointments = appointmentsData.filter((app: any) => app.date === today);
-      setQueue(todayAppointments);
-      
-      const waiting = todayAppointments.filter((app: any) => app.status === 'Waiting').length;
-      const inConsultation = todayAppointments.filter((app: any) => app.status === 'In Progress').length;
-      const critical = todayAppointments.filter((app: any) => app.priority === 'High').length;
-      const totalWaitMins = waiting * 12; // Dynamic 12m tracker per patient
-      
-      setStats(prev => [
-        { ...prev[0], value: waiting.toString() },
-        { ...prev[1], value: inConsultation.toString() },
-        { ...prev[2], value: `${totalWaitMins}m` },
-        { ...prev[3], value: critical.toString() }
-      ]);
-      
-      setLoading(false);
-    });
+      const fetchQueue = async () => {
+        try {
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'appointments', [
+            Query.equal('doctorId', currentUser.$id)
+          ]);
 
-    return () => unsubscribe();
+          const appointmentsData = snap.documents.map(doc => ({
+            id: doc.$id,
+            ...doc
+          }));
+          
+          const now = new Date();
+          const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          
+          const todayAppointments = appointmentsData.filter((app: any) => app.date === today);
+          setQueue(todayAppointments);
+          
+          const waiting = todayAppointments.filter((app: any) => app.status === 'Waiting').length;
+          const inConsultation = todayAppointments.filter((app: any) => app.status === 'In Progress').length;
+          const critical = todayAppointments.filter((app: any) => app.priority === 'High').length;
+          const totalWaitMins = waiting * 12; // Dynamic 12m tracker per patient
+          
+          setStats([
+            { ...stats[0], value: waiting.toString() },
+            { ...stats[1], value: inConsultation.toString() },
+            { ...stats[2], value: `${totalWaitMins}m` },
+            { ...stats[3], value: critical.toString() }
+          ]);
+          
+          setLoading(false);
+        } catch(e) { setLoading(false); }
+      };
+
+      fetchQueue();
+    };
+    init();
   }, []);
 
   const handleComplete = async (patientId: string) => {
     try {
-      await updateDoc(doc(db, 'appointments', patientId), { status: 'Completed' });
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'appointments', patientId, { status: 'Completed' });
     } catch(err) {
       console.error(err);
     }

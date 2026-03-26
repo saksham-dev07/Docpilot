@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy, limit, getDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 
@@ -40,9 +40,9 @@ export const DoctorDashboard: React.FC = () => {
       const uid = uidRaw as string;
       if (!patientNames[uid]) {
         try {
-          const snap = await getDoc(doc(db, 'users', uid));
-          if (snap.exists() && snap.data().firstName) {
-            setPatientNames(prev => ({...prev, [uid]: `${snap.data().firstName} ${snap.data().lastName}`}));
+          const snap = await databases.getDocument(APPWRITE_DATABASE_ID, 'users', uid);
+          if (snap && snap.firstName) {
+            setPatientNames(prev => ({...prev, [uid]: `${snap.firstName} ${snap.lastName}`}));
           }
         } catch(e) {}
       }
@@ -57,89 +57,106 @@ export const DoctorDashboard: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
 
-    // Fetch User Name
-    const fetchUser = async () => {
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser!.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setUserName(`${data.firstName} ${data.lastName}`);
-      }
-    };
-    fetchUser();
+    const init = async () => {
+      let currentUser: any;
+      try {
+        currentUser = await account.get();
+      } catch(e) { return; }
 
-    // SINGLE UNIFIED QUERY STREAM
-    const aptQuery = query(collection(db, 'appointments'), where('doctorId', '==', auth.currentUser.uid));
-    const unsubscribeApts = onSnapshot(aptQuery, (snapshot) => {
-      const allApts = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-      setAllAppointments(allApts);
+      // Fetch User Name
+      try {
+        const userDoc = await databases.getDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id);
+        if (userDoc) {
+          setUserName(`${userDoc.firstName} ${userDoc.lastName}`);
+        }
+      } catch(e) {}
 
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      
-      const upcoming = allApts.filter(a => a.date >= today).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-      setAppointments(upcoming);
-
-      const uniquePatients = new Set(allApts.map(a => a.patientId)).size;
-      
-      const insightsList = [];
-      const todayApts = upcoming.filter(a => a.date === today);
-      if (todayApts.length > 4) {
-         insightsList.push({ id: '1', title: 'High Volume Day', severity: 'High', patient: 'Multiple', desc: `You have an exceptionally dense schedule today with ${todayApts.length} consultations.` });
-      }
-      const urgent = upcoming.find(a => a.type?.includes('Emergency') || a.type?.includes('Urgent'));
-      if (urgent) {
-         insightsList.push({ id: '2', title: 'Urgent Care Required', severity: 'High', patient: urgent.patientName || 'Unknown', desc: 'An emergency appointment has been slotted into your upcoming workflow.' });
-      }
-      if (upcoming.some(a => a.status === 'Waiting')) {
-         insightsList.push({ id: '3', title: 'Patients Waiting', severity: 'Normal', patient: 'Lobby', desc: `You have active patients waiting in the digital lobby experiencing delays.` });
-      }
-      if (insightsList.length === 0) {
-         insightsList.push({ id: '4', title: 'Standard Cadence', severity: 'Normal', patient: 'General', desc: 'Your calendar is well-balanced without critical overlaps.' });
-      }
-      setAiInsights(insightsList);
-
-      setStats(prev => prev.map(stat => {
-        if (stat.label === 'Appointments') return { ...stat, value: upcoming.length.toString() };
-        if (stat.label === 'Total Patients') return { ...stat, value: uniquePatients.toString() };
-        if (stat.label === 'AI Insights') return { ...stat, value: insightsList.length.toString() };
-        return stat;
-      }));
-    });
-
-    const consQuery = query(collection(db, 'consultations'), where('doctorId', '==', auth.currentUser.uid));
-    const unsubscribeCons = onSnapshot(consQuery, (snapshot) => {
-      const isPast = (date: string, time: string) => {
+      // SINGLE UNIFIED QUERY STREAM
+      const fetchAppointments = async () => {
         try {
-          if (!time) return false;
-          const [timeVal, modifier] = time.split(' ');
-          let [hours, minutes] = timeVal.split(':').map(Number);
-          if (hours === 12 && modifier === 'AM') hours = 0;
-          else if (hours < 12 && modifier === 'PM') hours += 12;
-          const slotDateTime = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
-          return slotDateTime < new Date();
-        } catch { return false; }
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'appointments', [
+            Query.equal('doctorId', currentUser.$id),
+            Query.limit(100)
+          ]);
+          const allApts = snap.documents.map(d => ({ id: d.$id, ...d }));
+          setAllAppointments(allApts);
+
+          const now = new Date();
+          const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          
+          const upcoming = allApts.filter((a: any) => a.date >= today).sort((a: any, b: any) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+          setAppointments(upcoming);
+
+          const uniquePatients = new Set(allApts.map((a: any) => a.patientId)).size;
+          
+          const insightsList: any[] = [];
+          const todayApts = upcoming.filter((a: any) => a.date === today);
+          if (todayApts.length > 4) {
+             insightsList.push({ id: '1', title: 'High Volume Day', severity: 'High', patient: 'Multiple', desc: `You have an exceptionally dense schedule today with ${todayApts.length} consultations.` });
+          }
+          const urgent = upcoming.find((a: any) => a.type?.includes('Emergency') || a.type?.includes('Urgent'));
+          if (urgent) {
+             insightsList.push({ id: '2', title: 'Urgent Care Required', severity: 'High', patient: (urgent as any).patientName || 'Unknown', desc: 'An emergency appointment has been slotted into your upcoming workflow.' });
+          }
+          if (upcoming.some((a: any) => a.status === 'Waiting')) {
+             insightsList.push({ id: '3', title: 'Patients Waiting', severity: 'Normal', patient: 'Lobby', desc: `You have active patients waiting in the digital lobby experiencing delays.` });
+          }
+          if (insightsList.length === 0) {
+             insightsList.push({ id: '4', title: 'Standard Cadence', severity: 'Normal', patient: 'General', desc: 'Your calendar is well-balanced without critical overlaps.' });
+          }
+          setAiInsights(insightsList);
+
+          setStats(prev => prev.map(stat => {
+            if (stat.label === 'Appointments') return { ...stat, value: upcoming.length.toString() };
+            if (stat.label === 'Total Patients') return { ...stat, value: uniquePatients.toString() };
+            if (stat.label === 'AI Insights') return { ...stat, value: insightsList.length.toString() };
+            return stat;
+          }));
+        } catch(e) {}
       };
 
-      const activeCons = snapshot.docs.filter(d => {
-         if (d.id.endsWith('_chat')) return false;
-         const data = d.data();
-         if (data.status === 'Scheduled' && isPast(data.date, data.time)) return false; // Hide technically missed items
-         return data.status === 'Completed' || data.status === 'Scheduled' || data.status === 'Active' || data.status === 'In Progress';
-      });
+      const fetchConsultations = async () => {
+        try {
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'consultations', [
+            Query.equal('doctorId', currentUser.$id),
+            // The same as Firebase
+            Query.limit(100)
+          ]);
+          const isPast = (date: string, time: string) => {
+            try {
+              if (!time) return false;
+              const [timeVal, modifier] = time.split(' ');
+              let [hours, minutes] = timeVal.split(':').map(Number);
+              if (hours === 12 && modifier === 'AM') hours = 0;
+              else if (hours < 12 && modifier === 'PM') hours += 12;
+              const slotDateTime = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+              return slotDateTime < new Date();
+            } catch { return false; }
+          };
 
-      const consArr = activeCons.map(d => ({ id: d.id, ...(d.data() as any) }));
-      consArr.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-      setConsultations(consArr);
+          const activeCons = snap.documents.filter((d: any) => {
+             if (d.$id.endsWith('_chat')) return false;
+             if (d.status === 'Scheduled' && isPast(d.date, d.time)) return false; 
+             return d.status === 'Completed' || d.status === 'Scheduled' || d.status === 'Active' || d.status === 'In Progress';
+          });
 
-      setStats(prev => prev.map(stat => {
-        if (stat.label === 'Consultations') return { ...stat, value: activeCons.length.toString() };
-        return stat;
-      }));
-    });
+          const consArr = activeCons.map(d => ({ id: d.$id, ...d }));
+          consArr.sort((a: any, b: any) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+          setConsultations(consArr);
 
-    return () => { unsubscribeApts(); unsubscribeCons(); };
+          setStats(prev => prev.map(stat => {
+            if (stat.label === 'Consultations') return { ...stat, value: activeCons.length.toString() };
+            return stat;
+          }));
+        } catch(e) {}
+      };
+
+      fetchAppointments();
+      fetchConsultations();
+    };
+
+    init();
   }, []);
 
   useEffect(() => {

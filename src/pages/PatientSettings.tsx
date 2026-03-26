@@ -20,9 +20,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 
 const settingsSections = [
   { id: 'profile', label: 'Personal Profile', icon: User, desc: 'Update your personal details and health information.' },
@@ -45,12 +44,12 @@ export const PatientSettings: React.FC = () => {
 
   const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!auth.currentUser) return;
     setIsSaving(true);
     try {
+      const currentUser = await account.get();
       const data = new FormData(e.currentTarget);
       const updates = Object.fromEntries(data.entries());
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id, updates);
       setUserData({ ...userData, ...updates });
       alert("Profile updated successfully!");
     } catch (error) {
@@ -62,7 +61,6 @@ export const PatientSettings: React.FC = () => {
 
   const handlePasswordUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!auth.currentUser || !auth.currentUser.email) return;
     const data = new FormData(e.currentTarget);
     const current = data.get('currentPassword') as string;
     const newPass = data.get('newPassword') as string;
@@ -71,9 +69,7 @@ export const PatientSettings: React.FC = () => {
     if (newPass !== confirmPass) return alert('New passwords do not match!');
     setIsSaving(true);
     try {
-      const credential = EmailAuthProvider.credential(auth.currentUser.email, current);
-      await reauthenticateWithCredential(auth.currentUser, credential);
-      await updatePassword(auth.currentUser, newPass);
+      await account.updatePassword(newPass, current);
       alert('Password updated successfully!');
       e.currentTarget.reset();
     } catch (err: any) {
@@ -84,11 +80,13 @@ export const PatientSettings: React.FC = () => {
   };
 
   const handleToggleNotification = async (key: string) => {
-    if (!auth.currentUser) return;
-    const currentPrefs = userData?.notifications || {};
-    const updated = { ...currentPrefs, [key]: !currentPrefs[key] };
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), { notifications: updated });
-    setUserData({ ...userData, notifications: updated });
+    try {
+      const currentUser = await account.get();
+      const currentPrefs = userData?.notifications || {};
+      const updated = { ...currentPrefs, [key]: !currentPrefs[key] };
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id, { notifications: Object.values(updated).length > 0 ? JSON.stringify(updated) : "{}" });
+      setUserData({ ...userData, notifications: updated });
+    } catch(e) {}
   };
 
   const handleInitiateIntegration = (app: string) => {
@@ -100,26 +98,27 @@ export const PatientSettings: React.FC = () => {
   };
 
   const handleToggleIntegration = async (app: string, isDisconnect = false) => {
-    if (!auth.currentUser) return;
-    
     if (!isDisconnect) setIsAuthorizing(true);
     if (!isDisconnect) await new Promise(r => setTimeout(r, 1500));
     
-    const currentIntegrations = userData?.integrations || {};
-    let payload = null;
-    if (!isDisconnect) {
-      if (app.includes('Health') || app.includes('Fit')) {
-         payload = { steps: Math.floor(Math.random()*4000) + 4000 };
-      } else if (app.includes('Pharmacy')) {
-         payload = { prescriptions: 2 };
-      } else {
-         payload = { reports: 12 };
+    try {
+      const currentUser = await account.get();
+      const currentIntegrations = userData?.integrations || {};
+      let payload = null;
+      if (!isDisconnect) {
+        if (app.includes('Health') || app.includes('Fit')) {
+           payload = { steps: Math.floor(Math.random()*4000) + 4000 };
+        } else if (app.includes('Pharmacy')) {
+           payload = { prescriptions: 2 };
+        } else {
+           payload = { reports: 12 };
+        }
       }
-    }
-    
-    const updated = { ...currentIntegrations, [app]: isDisconnect ? false : payload };
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), { integrations: updated });
-    setUserData({ ...userData, integrations: updated });
+      
+      const updated = { ...currentIntegrations, [app]: isDisconnect ? false : payload };
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id, { integrations: Object.values(updated).length > 0 ? JSON.stringify(updated) : "{}" });
+      setUserData({ ...userData, integrations: updated });
+    } catch(e) {}
     
     if (!isDisconnect) {
        setIsAuthorizing(false);
@@ -128,10 +127,12 @@ export const PatientSettings: React.FC = () => {
   };
 
   const handleExportData = async () => {
-    if (!auth.currentUser) return;
     try {
-      const recordsSnapshot = await getDocs(query(collection(db, 'records'), where('patientId', '==', auth.currentUser.uid)));
-      const records = recordsSnapshot.docs.map(d => d.data());
+      const currentUser = await account.get();
+      const recordsSnapshot = await databases.listDocuments(APPWRITE_DATABASE_ID, 'records', [
+        Query.equal('patientId', currentUser.$id)
+      ]);
+      const records = recordsSnapshot.documents.map(d => ({...d, $id: undefined, $collectionId: undefined, $databaseId: undefined, $createdAt: undefined, $updatedAt: undefined, $permissions: undefined}));
       const exportData = { profile: userData, medical_records: records };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -148,10 +149,12 @@ export const PatientSettings: React.FC = () => {
   };
 
   const handleTogglePrivacy = async () => {
-    if (!auth.currentUser) return;
-    const newState = !(userData?.shareData ?? true);
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), { shareData: newState });
-    setUserData({ ...userData, shareData: newState });
+    try {
+      const currentUser = await account.get();
+      const newState = !(userData?.shareData ?? true);
+      await databases.updateDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id, { shareData: newState });
+      setUserData({ ...userData, shareData: newState });
+    } catch(e) {}
   };
 
   const handleClearCache = async () => {
@@ -168,19 +171,20 @@ export const PatientSettings: React.FC = () => {
 
   useEffect(() => {
     const fetchUserDataAndStorage = async () => {
-      if (auth.currentUser) {
+      try {
+        const currentUser = await account.get();
         try {
-          const docRef = doc(db, 'users', auth.currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setUserData(docSnap.data());
-          }
-          
-          const q = query(collection(db, 'records'), where('patientId', '==', auth.currentUser.uid));
-          const recSnapshot = await getDocs(q);
+          const docSnap = await databases.getDocument(APPWRITE_DATABASE_ID, 'users', currentUser.$id);
+          setUserData(docSnap);
+        } catch(e) {}
+        
+        try {
+          const recSnapshot = await databases.listDocuments(APPWRITE_DATABASE_ID, 'records', [
+            Query.equal('patientId', currentUser.$id)
+          ]);
           let totalMB = 0;
-          recSnapshot.forEach(doc => {
-             const data = doc.data();
+          recSnapshot.documents.forEach(doc => {
+             const data = doc;
              if (data.size) {
                const num = parseFloat(data.size.replace(' MB', '').trim());
                if (!isNaN(num)) totalMB += num;
@@ -193,13 +197,11 @@ export const PatientSettings: React.FC = () => {
             setTotalStorageUsed(`${totalMB.toFixed(2)} MB`);
           }
           
-          // Assuming 50GB total capacity (51200 MB), calculate percentage
           const pct = Math.min((totalMB / 51200) * 100, 100).toFixed(1);
           setStoragePercentage(`${pct}%`);
-          
-        } catch (error) {
-          console.error("Error fetching user/storage data:", error);
-        }
+        } catch(e) {}
+      } catch (error) {
+        console.error("Error fetching user/storage data:", error);
       }
       setLoading(false);
     };
@@ -286,7 +288,7 @@ export const PatientSettings: React.FC = () => {
                     <h3 className="text-3xl font-display font-bold text-slate-900 mb-2">
                       {userData?.firstName || userData?.lastName ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : (userData?.name || 'Patient')}
                     </h3>
-                    <p className="text-slate-500 font-medium mb-4">Patient ID: #{auth.currentUser?.uid?.slice(-5).toUpperCase() || '12024'} • Age: {userData?.age || 'Not Provided'}</p>
+                    <p className="text-slate-500 font-medium mb-4">Patient ID: #{userData?.$id?.slice(-5).toUpperCase() || '12024'} • Age: {userData?.age || 'Not Provided'}</p>
                     <div className="flex gap-2">
                       <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider">Verified Identity</span>
                       <span className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-wider">Standard Plan</span>
@@ -339,7 +341,7 @@ export const PatientSettings: React.FC = () => {
                       <input 
                         type="email" 
                         name="email"
-                        defaultValue={userData?.email || auth.currentUser?.email || ''}
+                        defaultValue={userData?.email || ''}
                         readOnly
                         className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-slate-500 cursor-not-allowed outline-none"
                       />

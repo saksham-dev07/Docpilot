@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { OAuthProvider } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { Mail, Lock, ArrowRight, Github, Chrome, Stethoscope, User } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -22,26 +22,22 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      await account.createEmailPasswordSession(email, password);
+      const user = await account.get();
       
-      // Verify role in Firestore
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
+      // Verify role in Appwrite
+      try {
+        const userDoc = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, user.$id);
+        const userData = userDoc;
+        
         if (userData.role !== role) {
-          await auth.signOut();
+          await account.deleteSession('current');
           setError(`This account is registered as a ${userData.role}. Please use the ${userData.role} portal.`);
           setLoading(false);
           return;
         }
-      } else {
-        // This shouldn't happen if they have an auth account but no firestore doc, 
-        // but we should handle it gracefully.
-        await auth.signOut();
+      } catch (err) {
+        await account.deleteSession('current');
         setError("User profile not found. Please sign up.");
         setLoading(false);
         return;
@@ -49,11 +45,7 @@ export const LoginPage: React.FC = () => {
 
       navigate(role === 'doctor' ? '/doctor' : '/patient');
     } catch (err: any) {
-      if (err.code === 'auth/operation-not-allowed') {
-        setError("Email/Password login is not enabled in Firebase. Please use Google Login or enable it in the console.");
-      } else {
-        setError("Invalid email or password. Please try again.");
-      }
+      setError("Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -63,34 +55,9 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      // Verify role in Firestore
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.role !== role) {
-          await auth.signOut();
-          setError(`This account is registered as a ${userData.role}. Please use the ${userData.role} portal.`);
-          setLoading(false);
-          return;
-        }
-      } else {
-        // If Google user doesn't exist in Firestore, they should go to signup
-        await auth.signOut();
-        setError("Account not found. Please sign up first.");
-        setLoading(false);
-        return;
-      }
-
-      navigate(role === 'doctor' ? '/doctor' : '/patient');
+      account.createOAuth2Session(OAuthProvider.Google, `${window.location.origin}${role === 'doctor' ? '/doctor' : '/patient'}`, window.location.href);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };

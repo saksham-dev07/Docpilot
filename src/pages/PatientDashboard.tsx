@@ -19,8 +19,8 @@ import {
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { ChatWidget } from '../components/ChatWidget';
-import { collection, query, where, onSnapshot, orderBy, limit, getDoc, doc, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 
 export const PatientDashboard: React.FC = () => {
   const [userName, setUserName] = useState('Patient');
@@ -94,83 +94,93 @@ export const PatientDashboard: React.FC = () => {
     return 'bg-emerald-600';
   };
 
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
   useEffect(() => {
-    if (!auth.currentUser) return;
 
-    // Fetch User Data Snapshot
-    const fetchUser = () => {
-      return onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setUserName(`${data.firstName || ''} ${data.lastName || ''}`.trim() || data.name || 'Patient');
-          setUserData(data);
-          
-          if (data.latestVitals) {
-            setHealthStats(prev => prev.map(stat => {
-              if (stat.label === 'Heart Rate') return { ...stat, value: data.latestVitals.heartRate?.toString() || '--', status: data.latestVitals.heartRateStatus || 'Pending' };
-              if (stat.label === 'Temperature') return { ...stat, value: data.latestVitals.temperature?.toString() || '--', status: data.latestVitals.temperatureStatus || 'Pending' };
-              if (stat.label === 'Blood Glucose') return { ...stat, value: data.latestVitals.bloodGlucose?.toString() || '--', status: data.latestVitals.bloodGlucoseStatus || 'Pending' };
-              if (stat.label === 'Blood Pressure') return { ...stat, value: data.latestVitals.bloodPressure || '--', status: data.latestVitals.bloodPressureStatus || 'Pending' };
-              return stat;
-            }));
-          }
-        }
-      });
+    const fetchData = async () => {
+      try {
+        const currentUser = await account.get();
+        if (!currentUser) return;
+        setCurrentUserId(currentUser.$id);
+
+        // Fetch Initial Data
+        const fetchInitialUser = async () => {
+          try {
+            const data = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, currentUser.$id);
+            setUserName(`${data.firstName || ''} ${data.lastName || ''}`.trim() || data.name || 'Patient');
+            setUserData(data);
+            
+            if (data.latestVitals) {
+              const parsedVitals = typeof data.latestVitals === 'string' ? JSON.parse(data.latestVitals) : data.latestVitals;
+              setHealthStats(prev => prev.map(stat => {
+                if (stat.label === 'Heart Rate') return { ...stat, value: parsedVitals.heartRate?.toString() || '--', status: parsedVitals.heartRateStatus || 'Pending' };
+                if (stat.label === 'Temperature') return { ...stat, value: parsedVitals.temperature?.toString() || '--', status: parsedVitals.temperatureStatus || 'Pending' };
+                if (stat.label === 'Blood Glucose') return { ...stat, value: parsedVitals.bloodGlucose?.toString() || '--', status: parsedVitals.bloodGlucoseStatus || 'Pending' };
+                if (stat.label === 'Blood Pressure') return { ...stat, value: parsedVitals.bloodPressure || '--', status: parsedVitals.bloodPressureStatus || 'Pending' };
+                return stat;
+              }));
+            }
+          } catch (e) { console.error(e); }
+        };
+        fetchInitialUser();
+
+        fetchInitialUser();
+
+        // Fetch Appointments
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        const fetchApts = async () => {
+          try {
+            const aptsData = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+              Query.equal('patientId', currentUser.$id),
+              Query.greaterThanEqual('date', today),
+              Query.orderAsc('date'),
+              Query.limit(3)
+            ]);
+            setUpcomingAppointments(aptsData.documents.map(d => ({id: d.$id, ...d})));
+          } catch(e) {}
+        };
+        fetchApts();
+
+        fetchApts();
+
+        const fetchCons = async () => {
+          try {
+            const consData = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+              Query.equal('patientId', currentUser.$id),
+              Query.greaterThanEqual('date', today),
+              Query.orderAsc('date'),
+              Query.limit(3)
+            ]);
+            setUpcomingConsultations(consData.documents.map(d => ({id: d.$id, ...d})).filter(c => !c.id.endsWith('_chat')));
+          } catch(e) {}
+        };
+        fetchCons();
+
+        fetchCons();
+
+        const fetchRecords = async () => {
+          try {
+            // Using consultations as records collection replacement
+            const recordData = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+              Query.equal('patientId', currentUser.$id),
+              Query.orderDesc('date'),
+              Query.limit(5)
+            ]);
+            setMedicalDocuments(recordData.documents.map(d => ({id: d.$id, ...d})));
+          } catch(e) {}
+        };
+        fetchRecords();
+        fetchRecords();
+        
+      } catch (err) {
+        console.error('Session error', err);
+      }
     };
-    const unsubscribeUser = fetchUser();
-
-    // Fetch Appointments (Today and Future)
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    const aptQuery = query(
-      collection(db, 'appointments'),
-      where('patientId', '==', auth.currentUser.uid),
-      where('date', '>=', today),
-      orderBy('date', 'asc'),
-      limit(3)
-    );
-
-    const unsubscribeApts = onSnapshot(aptQuery, (snapshot) => {
-      const apts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-      setUpcomingAppointments(apts);
-    });
-
-    const consQuery = query(
-      collection(db, 'consultations'),
-      where('patientId', '==', auth.currentUser.uid),
-      where('date', '>=', today),
-      orderBy('date', 'asc'),
-      limit(3)
-    );
-
-    const unsubscribeCons = onSnapshot(consQuery, (snapshot) => {
-      const consData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).filter(c => !c.id.endsWith('_chat'));
-      setUpcomingConsultations(consData);
-    });
-
-    // Fetch Records
-    const recordQuery = query(
-      collection(db, 'records'),
-      where('patientId', '==', auth.currentUser.uid),
-      orderBy('date', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribeRecords = onSnapshot(recordQuery, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMedicalDocuments(docs);
-    });
-
-    return () => {
-      unsubscribeApts();
-      unsubscribeCons();
-      unsubscribeRecords();
-      unsubscribeUser();
-    };
+    fetchData();
   }, []);
 
   const isPast = (date: string, time: string) => {
@@ -272,9 +282,9 @@ export const PatientDashboard: React.FC = () => {
                     <span className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-bold block mb-3 text-center">
                       {apt.status}
                     </span>
-                    <button onClick={() => setActiveChat({ doctorId: apt.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${apt.date} • ${apt.time}` })} className="w-full relative py-2 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs hover:bg-brand-100 transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    <button onClick={() => setActiveChat({ doctorId: apt.doctorId, patientId: currentUserId, sessionContext: `${apt.date} • ${apt.time}` })} className="w-full relative py-2 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs hover:bg-brand-100 transition-all flex items-center justify-center gap-1.5 shadow-sm">
                       <MessageSquare className="w-3.5 h-3.5" /> Message Doctor
-                      {apt.messages?.length > 0 && apt.messages[apt.messages.length - 1].senderId !== auth.currentUser?.uid && !apt.messages[apt.messages.length - 1].read && (
+                      {apt.messages?.length > 0 && apt.messages[apt.messages.length - 1].senderId !== currentUserId && !apt.messages[apt.messages.length - 1].read && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white" />
                       )}
                     </button>
@@ -318,9 +328,9 @@ export const PatientDashboard: React.FC = () => {
                     <span className="px-4 py-1.5 bg-brand-50 text-brand-600 rounded-full text-xs font-bold mb-3 block w-full text-center">
                       {cons.status || 'Scheduled'}
                     </span>
-                       <button onClick={() => setActiveChat({ doctorId: cons.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${cons.date} • ${cons.time}` })} className="w-full relative py-2.5 bg-brand-50 text-brand-600 rounded-xl font-bold text-sm hover:bg-brand-100 transition-all flex items-center justify-center gap-2 shadow-sm">
+                       <button onClick={() => setActiveChat({ doctorId: cons.doctorId, patientId: currentUserId, sessionContext: `${cons.date} • ${cons.time}` })} className="w-full relative py-2.5 bg-brand-50 text-brand-600 rounded-xl font-bold text-sm hover:bg-brand-100 transition-all flex items-center justify-center gap-2 shadow-sm">
                         <MessageSquare className="w-4 h-4" /> Start Chat Session
-                        {cons.messages?.length > 0 && cons.messages[cons.messages.length - 1].senderId !== auth.currentUser?.uid && !cons.messages[cons.messages.length - 1].read && (
+                        {cons.messages?.length > 0 && cons.messages[cons.messages.length - 1].senderId !== currentUserId && !cons.messages[cons.messages.length - 1].read && (
                           <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
                         )}
                       </button>
@@ -428,7 +438,7 @@ export const PatientDashboard: React.FC = () => {
             
             <form onSubmit={async (e) => {
               e.preventDefault();
-              if (!auth.currentUser) return;
+              if (!currentUserId) return;
               setIsSubmittingVitals(true);
               try {
                 const data = new FormData(e.currentTarget);
@@ -450,9 +460,15 @@ export const PatientDashboard: React.FC = () => {
                   bloodPressureStatus: sys && dia ? (Number(sys) > 180 || Number(dia) > 120 ? 'Critical' : Number(sys) < 90 || Number(dia) < 60 ? 'Low' : Number(sys) >= 130 || Number(dia) >= 80 ? 'High' : Number(sys) >= 120 ? 'Elevated' : 'Normal') : 'Pending',
                 };
                 
-                await updateDoc(doc(db, 'users', auth.currentUser.uid), { 
-                  latestVitals: payload,
-                  vitalsHistory: arrayUnion(payload)
+                let history = [];
+                if (userData?.vitalsHistory) {
+                    history = typeof userData.vitalsHistory === 'string' ? JSON.parse(userData.vitalsHistory) : userData.vitalsHistory;
+                }
+                history.push(payload);
+
+                await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, currentUserId, { 
+                  latestVitals: JSON.stringify(payload),
+                  vitalsHistory: history.map((h: any) => JSON.stringify(h))
                 });
                 setShowVitalsModal(false);
               } catch (err) {
@@ -501,7 +517,7 @@ export const PatientDashboard: React.FC = () => {
           doctorId={activeChat.doctorId}
           patientId={activeChat.patientId}
           sessionContext={activeChat.sessionContext}
-          currentUserId={auth.currentUser?.uid || ''} 
+          currentUserId={currentUserId} 
           currentUserName={userName} 
           onClose={() => setActiveChat(null)} 
         />

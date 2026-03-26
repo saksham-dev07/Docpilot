@@ -17,12 +17,13 @@ import {
   PieChart
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { Query } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 
 export const BillingPage: React.FC = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [doctorName, setDoctorName] = useState('Doctor');
   const [stats, setStats] = useState([
     { label: 'Total Revenue', value: '$0', change: '+0%', icon: DollarSign, color: 'text-emerald-600 bg-emerald-50' },
     { label: 'Pending Payments', value: '$0', change: '+0%', icon: Clock, color: 'text-amber-600 bg-amber-50' },
@@ -31,49 +32,66 @@ export const BillingPage: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    let interval: NodeJS.Timeout | null = null;
+    let isMounted = true;
+    const init = async () => {
+      let currentUser: any;
+      try {
+        currentUser = await account.get();
+        if (currentUser.name) setDoctorName(currentUser.name);
+      } catch(e) { return; }
 
-    const q = query(
-      collection(db, 'invoices'),
-      where('doctorId', '==', auth.currentUser.uid)
-    );
+      const fetchInvoices = async () => {
+        try {
+          const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'invoices', [
+            Query.equal('doctorId', currentUser.$id)
+          ]);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const invoicesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setInvoices(invoicesData);
-      
-      // Calculate stats
-      const totalRevenue = invoicesData
-        .filter((inv: any) => inv.status === 'Paid')
-        .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
-      
-      const pendingAmount = invoicesData
-        .filter((inv: any) => inv.status === 'Pending')
-        .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
-      
-      const overdueAmount = invoicesData
-        .filter((inv: any) => inv.status === 'Overdue')
-        .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
-      
-      const avgInvoice = invoicesData.length > 0 
-        ? totalRevenue / invoicesData.length 
-        : 0;
-      
-      setStats([
-        { ...stats[0], value: `$${totalRevenue.toLocaleString()}` },
-        { ...stats[1], value: `$${pendingAmount.toLocaleString()}` },
-        { ...stats[2], value: `$${Math.round(avgInvoice).toLocaleString()}` },
-        { ...stats[3], value: `$${overdueAmount.toLocaleString()}` },
-      ]);
-      
-      setLoading(false);
-    });
+          const invoicesData = snap.documents.map(doc => ({
+            id: doc.$id,
+            ...doc
+          }));
+          
+          setInvoices(invoicesData);
+          
+          // Calculate stats
+          const totalRevenue = invoicesData
+            .filter((inv: any) => inv.status === 'Paid')
+            .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
+          
+          const pendingAmount = invoicesData
+            .filter((inv: any) => inv.status === 'Pending')
+            .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
+          
+          const overdueAmount = invoicesData
+            .filter((inv: any) => inv.status === 'Overdue')
+            .reduce((acc: number, inv: any) => acc + (inv.amount || 0), 0);
+          
+          const avgInvoice = invoicesData.length > 0 
+            ? totalRevenue / invoicesData.length 
+            : 0;
+          
+          setStats([
+            { ...stats[0], value: `$${totalRevenue.toLocaleString()}` },
+            { ...stats[1], value: `$${pendingAmount.toLocaleString()}` },
+            { ...stats[2], value: `$${Math.round(avgInvoice).toLocaleString()}` },
+            { ...stats[3], value: `$${overdueAmount.toLocaleString()}` },
+          ]);
+          
+          setLoading(false);
+        } catch(e) { setLoading(false); }
+      };
 
-    return () => unsubscribe();
+      fetchInvoices();
+      if (!isMounted) return;
+      interval = setInterval(fetchInvoices, 5000);
+    };
+    init();
+
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -236,7 +254,7 @@ export const BillingPage: React.FC = () => {
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Card Holder</p>
-                  <p className="text-sm font-bold">Dr. {auth.currentUser?.displayName || 'Sarah Chen'}</p>
+                  <p className="text-sm font-bold">Dr. {doctorName}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Expires</p>

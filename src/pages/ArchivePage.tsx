@@ -15,8 +15,8 @@ import {
   Database
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query, ID } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID } from '../lib/appwrite';
 
 export const ArchivePage: React.FC = () => {
   const [records, setRecords] = useState<any[]>([]);
@@ -24,21 +24,36 @@ export const ArchivePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    let interval: NodeJS.Timeout | null = null;
+    let isMounted = true;
+    const fetchRecords = async () => {
+      try {
+        const currentUser = await account.get();
+        
+        const fetchData = async () => {
+          try {
+            const snap = await databases.listDocuments(APPWRITE_DATABASE_ID, 'records', [
+              Query.equal('doctorId', currentUser.$id),
+              Query.orderDesc('date'),
+              Query.limit(100)
+            ]);
+            setRecords(snap.documents.map(d => ({ id: d.$id, ...d })));
+            setLoading(false);
+          } catch(e) { setLoading(false); }
+        };
+        
+        fetchData();
+        if (!isMounted) return;
+        interval = setInterval(fetchData, 5000);
+      } catch(e) { setLoading(false); }
+    };
+    
+    fetchRecords();
 
-    const q = query(
-      collection(db, 'records'),
-      where('doctorId', '==', auth.currentUser.uid),
-      orderBy('date', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRecords(docs);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   const filteredRecords = records.filter(record => 

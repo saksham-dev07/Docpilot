@@ -20,8 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { account } from '../lib/appwrite';
 
 export const PatientLiveConsultation: React.FC = () => {
   const [isMuted, setIsMuted] = React.useState(false);
@@ -30,13 +29,10 @@ export const PatientLiveConsultation: React.FC = () => {
 
   useEffect(() => {
     const fetchPatient = async () => {
-      if (auth.currentUser) {
-        const docRef = doc(db, 'users', auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setPatientName(docSnap.data().name);
-        }
-      }
+      try {
+        const currentUser = await account.get();
+        if (currentUser.name) setPatientName(currentUser.name);
+      } catch(e) {}
     };
     fetchPatient();
   }, []);

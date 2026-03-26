@@ -15,8 +15,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { cn, handleFirestoreError, OperationType } from '../lib/utils';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { Query, ID } from 'appwrite';
+import { account, databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS } from '../lib/appwrite';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export const BookAppointment: React.FC = () => {
@@ -37,6 +37,11 @@ export const BookAppointment: React.FC = () => {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [appointmentType, setAppointmentType] = useState<'appointment' | 'consultation'>('appointment');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    account.get().then(user => setCurrentUser(user)).catch(() => {});
+  }, []);
 
   const timeSlots = [
     '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
@@ -46,9 +51,10 @@ export const BookAppointment: React.FC = () => {
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const q = query(collection(db, 'users'), where('role', '==', 'doctor'));
-        const snapshot = await getDocs(q);
-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snapshot = await databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, [
+          Query.equal('role', 'doctor')
+        ]);
+        const docs = snapshot.documents.map(doc => ({ id: doc.$id, ...doc }));
         setDoctors(docs);
       } catch (error) {
         console.error('Error fetching doctors:', error);
@@ -82,13 +88,28 @@ export const BookAppointment: React.FC = () => {
       }
     };
 
-    const qApt = query(collection(db, 'appointments'), where('doctorId', '==', selectedDoctor.id), where('date', '==', selectedDate));
-    const unsubApt = onSnapshot(qApt, (snapshot) => { apts = snapshot.docs.map(doc => doc.data().time); updateSlots(); });
+    const fetchSlots = async () => {
+      try {
+        const [aptsSnap, consSnap] = await Promise.all([
+          databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, [
+            Query.equal('doctorId', selectedDoctor.id),
+            Query.equal('date', selectedDate)
+          ]),
+          databases.listDocuments(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, [
+            Query.equal('doctorId', selectedDoctor.id),
+            Query.equal('date', selectedDate)
+          ])
+        ]);
+        
+        apts = aptsSnap.documents.map((d: any) => d.time);
+        cons = consSnap.documents.map((d: any) => d.time);
+        updateSlots();
+      } catch(e) {}
+    };
 
-    const qCons = query(collection(db, 'consultations'), where('doctorId', '==', selectedDoctor.id), where('date', '==', selectedDate));
-    const unsubCons = onSnapshot(qCons, (snapshot) => { cons = snapshot.docs.map(doc => doc.data().time); updateSlots(); });
+    fetchSlots();
 
-    return () => { unsubApt(); unsubCons(); };
+    return () => {};
   }, [selectedDoctor, selectedDate]);
 
   const handleProceed = () => {
@@ -98,17 +119,17 @@ export const BookAppointment: React.FC = () => {
   };
 
   const handleBooking = async () => {
-    if (!auth.currentUser || !selectedDoctor || !selectedDate || !selectedTime) return;
+    if (!currentUser || !selectedDoctor || !selectedDate || !selectedTime) return;
 
     setBooking(true);
     try {
       const doctorName = `${selectedDoctor.firstName} ${selectedDoctor.lastName}`;
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-      const patientName = userDoc.exists() && userDoc.data().firstName ? `${userDoc.data().firstName} ${userDoc.data().lastName}` : (auth.currentUser.displayName || 'Patient');
+      const userDoc = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.USERS, currentUser.$id).catch(() => null);
+      const patientName = userDoc && userDoc.firstName ? `${userDoc.firstName} ${userDoc.lastName}` : (currentUser.name || 'Patient');
 
       if (appointmentType === 'appointment') {
-         await addDoc(collection(db, 'appointments'), {
-           patientId: auth.currentUser.uid,
+         await databases.createDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.APPOINTMENTS, ID.unique(), {
+           patientId: currentUser.$id,
            patientName: patientName,
            doctorId: selectedDoctor.id,
            doctorName: doctorName,
@@ -116,12 +137,11 @@ export const BookAppointment: React.FC = () => {
            time: selectedTime,
            status: 'Scheduled',
            type: 'In-person',
-           priority: 'Medium',
-           createdAt: new Date().toISOString()
+           priority: 'Medium'
          }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'appointments'));
       } else {
-         await addDoc(collection(db, 'consultations'), {
-           patientId: auth.currentUser.uid,
+         await databases.createDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, ID.unique(), {
+           patientId: currentUser.$id,
            patientName: patientName,
            doctorId: selectedDoctor.id,
            doctorName: doctorName,
@@ -129,12 +149,11 @@ export const BookAppointment: React.FC = () => {
            time: selectedTime,
            status: 'Scheduled',
            specialty: selectedDoctor.specialty || 'General Physician',
-           rescheduleCount: isReschedule ? rescheduleCount + 1 : 0,
-           createdAt: new Date().toISOString()
+           rescheduleCount: isReschedule ? rescheduleCount + 1 : 0
          }).catch(error => handleFirestoreError(error, OperationType.WRITE, 'consultations'));
 
          if (isReschedule && oldConsultationId) {
-           await updateDoc(doc(db, 'consultations', oldConsultationId), {
+           await databases.updateDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTIONS.CONSULTATIONS, oldConsultationId, {
              status: 'Rescheduled'
            }).catch(error => handleFirestoreError(error, OperationType.UPDATE, 'consultations'));
          }
