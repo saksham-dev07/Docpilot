@@ -7,13 +7,13 @@
 [![Appwrite](https://img.shields.io/badge/Appwrite-Storage-F02E65?style=for-the-badge&logo=appwrite&logoColor=white)](https://appwrite.io/)
 [![Gemini AI](https://img.shields.io/badge/Google-Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
 
-**DocPilot** is a sophisticated, data-driven healthcare platform designed for high-performance clinical practice management. Engineered with a multi-tenant architecture, it bridges the gap between patient care and operational efficiency using real-time synchronization, intelligent automation, and hybrid storage solutions.
+**DocPilot** is a sophisticated, AI-augmented clinical management platform designed for high-performance practice management. Built for two distinct user roles — **Doctors** and **Patients** — it digitalises the entire outpatient workflow: from appointment booking and OPD queue management, through live chat consultations and prescription creation, to file storage, analytics, and billing.
 
 ---
 
 ## 🏗️ System Architecture
 
-DocPilot utilizes a hybrid cloud architecture for maximum reliability and regulatory compliance:
+DocPilot uses a hybrid cloud architecture for maximum reliability and regulatory compliance:
 
 ```mermaid
 graph TD
@@ -28,65 +28,195 @@ graph TD
     E ---|Clinical Scribe| H[Live Consultation]
 ```
 
-### Core Architecture Components:
-- **Authentication**: Firebase Auth with Role-Based Access Control (RBAC).
-- **Primary Database**: Cloud Firestore for real-time state, appointment queues, and messaging.
-- **Hybrid Storage**: Firestore handles clinical metadata while Appwrite Storage manages secure, large-scale medical imaging (DICOM/JPG) and reports.
-- **Intelligence Layer**: Google Gemini API integrated for real-time clinical note generation and diagnostic support.
+### Core Architecture Components
+- **Authentication**: Firebase Auth with Role-Based Access Control (RBAC) — `'doctor'` or `'patient'` role enforced at both client and database level.
+- **Primary Database**: Cloud Firestore with `onSnapshot` real-time listeners throughout — zero-latency queue and chat sync.
+- **Hybrid Storage**: Firestore handles clinical metadata + online prescriptions; Appwrite Storage manages large medical files (DICOM/JPG/PDF).
+- **Intelligence Layer**: Google Gemini API for AI chat assistant and planned clinical note generation.
 
 ---
 
-## 🔥 Deep-Dive: Key Features
+## 📁 Project Structure
 
-### 📅 Real-time OPD Queue Manager (`src/pages/OPDManager.tsx`)
-A live-syncing outpatient department interface with sophisticated queueing logic:
-- **Dynamic Wait Tracker**: Automatically calculates average wait times based on live patient density (e.g., `WaitingCount * 12m`).
-- **Priority Triage**: Color-coded categorization (`High`, `Medium`, `Low`) to identify critical cases instantly.
-- **Live Sync**: Uses Firestore `onSnapshot` for zero-latency updates to the medical lobby.
+```
+src/
+├── App.tsx                    # Root router + ProtectedRoute RBAC guard
+├── firebase.ts                # Firebase SDK (Auth, Firestore, Storage)
+├── layouts/
+│   ├── DashboardLayout.tsx    # Main shell: sidebar, top header, mobile nav
+│   └── AuthLayout.tsx         # Auth pages wrapper
+├── pages/                     # 22 page components
+├── components/
+│   ├── ChatWidget.tsx          # Floating Gemini AI assistant
+│   └── PatientProfileModal.tsx # Doctor-side patient profile overlay
+└── lib/
+    ├── utils.ts                # cn(), Firestore error handler
+    └── appwrite.ts             # Appwrite storage client
+```
 
-### 🎥 AI-Driven Telehealth (`src/pages/DoctorLiveConsultation.tsx`)
-A high-fidelity virtual consultation room:
-- **AI Clinical Scribe**: Listen-mode integration that generates SOAP (Subjective, Objective, Assessment, Plan) notes in real-time.
-- **Integrated Transcription**: Live visual feedback of patient-doctor dialogue.
-- **Smart Recs**: AI-flagged contraindications and suggested diagnostic pathways during the session.
+---
 
-### 📁 Hybrid Document Workflow (`src/pages/DocumentWorkflow.tsx`)
-Comprehensive EHR management system:
-- **Dual Flow**: Supports both "Handwritten Prescriptions" (scanned uploads via Appwrite) and "Online Prescriptions" (structured data schemas).
-- **Specialized Viewer**: Integrated support for clinical imaging and PDF reports with secure session-based URLs.
-- **Patient Mapping**: Intelligent lookups of patient metadata across fragmented medical records.
+## 🔐 Authentication & Routing
 
-### 📊 Clinical Analytics (`src/pages/AnalyticsPage.tsx`)
-Data-driven practice performance monitoring:
-- **Practice Volume**: Visualizing appointment vs. consultation trends using Recharts.
-- **Severity Indexing**: Distribution analysis of patient priority levels.
-- **Automated Reporting**: Exportable daily practice reports (PDF/TXT).
+- **Firebase Auth** — Email/Password + **Google OAuth** (`GoogleAuthProvider`)
+- On each load, `onAuthStateChanged` reads the user's `role` from `users/{uid}` in Firestore
+- `ProtectedRoute` in `App.tsx` enforces strict role redirects — a doctor visiting a patient route is bounced to `/doctor` and vice versa
+
+### Route Map
+
+| Path | Role | Page |
+|---|---|---|
+| `/` | Public | Landing Page |
+| `/login` `/signup` `/forgot-password` | Public | Auth Pages |
+| `/solutions` `/features` `/about` `/pricing` etc. | Public | Marketing Pages |
+| `/doctor` | Doctor | Doctor Dashboard |
+| `/doctor/appointments` | Doctor | Appointment Manager |
+| `/doctor/consultations` | Doctor | Chat Sessions |
+| `/doctor/archive` | Doctor | Document Archive |
+| `/doctor/settings` | Doctor | Profile & Settings |
+| `/opd` | Doctor | OPD Queue Manager |
+| `/workflow` | Doctor | Document Workflow |
+| `/analytics` | Doctor | Clinical Intelligence |
+| `/patient` | Patient | Patient Dashboard |
+| `/patient/consultations` | Patient | My Chat Sessions |
+| `/patient/archive` | Patient | My Medical Records |
+| `/patient/settings` | Patient | Patient Profile |
+| `/book` | Patient | Book Appointment |
+
+---
+
+## 🔥 Modules & Features
+
+### 🖥️ Shared Shell — `DashboardLayout.tsx`
+The wrapper around every authenticated page:
+- **Sidebar** (desktop): role-aware nav links with active-dot indicators
+- **Top Header**: 350ms-debounced global Firestore search, notification bell panel, profile avatar
+- **Mobile Hamburger**: slide-out drawer with full nav + sign-out
+- **Mobile Bottom Nav**: fixed tab bar for quick navigation
+- Profile name, photo, and subtext (specialty / patient ID) loaded via live `onSnapshot`
+
+---
+
+### 👨‍⚕️ Doctor Module
+
+#### Dashboard — `DoctorDashboard.tsx`
+- **4 stat cards**: Total Patients, Appointments, Chat Sessions, AI Insights
+- **Appointment Queue**: real-time list with patient photos and status badges (In Progress / Waiting / Scheduled)
+- **AI Clinical Assistant panel**: auto-derives alerts from schedule data — High Volume Day, Urgent Care, Patients Waiting, Standard Cadence — all dismissible
+- **Practice Performance chart**: `BarChart` toggling weekly/monthly appointment + consultation volume (Recharts)
+- **Download Report** button generates a `.txt` practice summary
+
+#### OPD Manager — `OPDManager.tsx`
+- Live patient queue with Waiting → In Progress → Completed flow
+- Zero-latency updates via Firestore `onSnapshot`
+
+#### Appointments — `DoctorAppointments.tsx`
+- Full CRUD on appointments, status updates, filtering
+
+#### Chat Sessions — `DoctorConsultations.tsx` + `DoctorLiveConsultation.tsx`
+- List of scheduled/active consultations
+- Live chat UI with AI-assisted note-taking / clinical scribe
+
+#### Document Workflow — `DocumentWorkflow.tsx`
+- **Upload Modal**: files sent to **Appwrite Storage** (≤ 20 MB), metadata saved in Firestore `records`
+- **Create Prescription Modal**: structured digital Rx — medicine name, dosage, frequency (`X-X-X` format validated), duration
+- **Prescription Viewer**: Online prescriptions rendered as formatted Rx cards; images rendered inline; PDFs in `<iframe>` via Appwrite view URL
+- Stats: Pending Review / Verified Reports / Missing Information
+
+#### Archive — `ArchivePage.tsx`
+- Full history of all uploaded records across all patients, with search and category filter
+
+#### Clinical Intelligence — `AnalyticsPage.tsx`
+- **Live metrics**: Unique Patients, Total Consultations, Gross Revenue (₹), Records Filed
+- **Patient Volume Area Chart**: week/month toggle
+- **Specialty Distribution Pie Chart**: appointment type breakdown
+- **Consultation Trends Bar Chart**: consultations + revenue over time
+- Export to `.txt` report
+
+#### Settings — `SettingsPage.tsx`
+- Profile photo, bio, specialty, license number editing; security settings
+
+---
+
+### 🧑‍🤝‍🧑 Patient Module
+
+#### Dashboard — `PatientDashboard.tsx`
+- Upcoming appointments, recent consultations, health summary cards
+
+#### Book Appointment — `BookAppointment.tsx`
+- Browse available doctors (queried from Firestore by role)
+- Select date, time slot, and consultation type (In-Person / Video Call)
+- Creates `appointments` document visible to both parties instantly
+
+#### My Chat Sessions — `PatientConsultations.tsx` + `PatientLiveConsultation.tsx`
+- Lists scheduled, in-progress, and completed consultations
+- Live chat interface with real-time Firestore `chats` collection messaging
+
+#### My Medical Records — `PatientArchive.tsx`
+- All prescriptions and documents shared by their doctor
+- Filterable by type (Reports / Imaging); download via Appwrite URLs
+
+#### Patient Settings — `PatientSettings.tsx`
+- Name, photo, blood type, allergies, emergency contacts
+- Profile photo upload to Firebase Storage; password/email change
+
+---
+
+### 🤖 AI Features
+
+| Feature | Technology | Location |
+|---|---|---|
+| Floating AI Chat Assistant | `@google/genai` (Gemini) | `ChatWidget.tsx` |
+| AI Clinical Insights | Rule-based schedule analysis | `DoctorDashboard.tsx` |
+| Auto-Summarize (planned) | Gemini API | `DocumentWorkflow.tsx` |
+
+---
+
+## 🗄️ Firebase Data Model
+
+| Collection | Key Fields | Access Control |
+|---|---|---|
+| `users` | uid, email, firstName, lastName, role, specialty, licenseNumber, patientId, bloodType, allergies, photoURL | Owner only can write; all auth users can read |
+| `appointments` | doctorId, patientId, doctorName, patientName, date, time, type, status, amount | Doctor or patient party only |
+| `consultations` | doctorId, patientId, date, time, status | Doctor or patient party only |
+| `records` | patientId, doctorId, name, type, category, appwriteFileId, appwriteViewUrl, prescriptionData, status | Patient owner or any doctor |
+| `invoices` | patientId, doctorId, amount, status (Paid/Pending/Overdue) | Owning doctor only |
+| `chats` | (message documents) | Any authenticated user |
 
 ---
 
 ## 🔒 Security Model
 
-Security is not a feature; it is the foundation:
-- **Firestore Rules (`firestore.rules`)**: Granular resource-level security ensuring doctors only access their assigned patients and patients only access their own records.
-- **RBAC Validation**: Server-side validation of user roles (`doctor`/`patient`) for every database transaction.
-- **HIPAA Readiness**: End-to-end encryption for sensitive health data and secure isolated storage buckets.
+Security is enforced at the **database level** via `firestore.rules` — not just client-side:
+
+- `isAuthenticated()` — base guard for every operation
+- `isOwner(userId)` — UID must match the document's owner field
+- `isDoctor()` / `isPatient()` — role verified via **live database lookup** on every write
+- Field-level schema validation on every create/update: `isValidUser()`, `isValidAppointment()`, `isValidConsultation()`, `isValidRecord()`, `isValidInvoice()`
+- **Role immutability**: `request.resource.data.role == resource.data.role` — a user cannot change their own role
 
 ---
 
 ## 🛠️ Technical Specification
 
-| Ecosystem | Technology |
-| :--- | :--- |
-| **Framework** | **React 19** (Concurrent Mode) |
-| **Styling** | **Tailwind CSS 4** with CSS Variables |
-| **Dev Tools** | **Vite 6** + **TypeScript 5.8** |
-| **Animation** | **Motion** (Framer Motion) |
-| **Charts** | **Recharts** (SVG based) |
-| **Icons** | **Lucide React** |
+| Layer | Technology |
+|---|---|
+| **UI Framework** | React 19 (Concurrent Mode) |
+| **Language** | TypeScript 5.8 |
+| **Bundler** | Vite 6 |
+| **Routing** | React Router v7 |
+| **Styling** | Tailwind CSS v4 + `tailwind-merge` + `clsx` |
+| **Animations** | Motion (Framer Motion) v12 |
+| **Charts** | Recharts v3 |
+| **Icons** | Lucide React |
+| **Auth + DB** | Firebase v12 (Auth, Firestore, Storage) |
+| **File Storage** | Appwrite (medical documents) |
+| **AI** | @google/genai (Gemini) |
+| **Date Utils** | date-fns |
 
 ---
 
-## 🚀 Deployment & Setup
+## 🚀 Setup & Deployment
 
 ### Environment Variables
 ```env
@@ -101,7 +231,9 @@ VITE_GOOGLE_GENAI_KEY=********
 ### Quick Install
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:3000
+npm run build    # production bundle
+npm run lint     # TypeScript type check
 ```
 
 ---
