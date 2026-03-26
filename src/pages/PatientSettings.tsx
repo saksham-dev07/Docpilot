@@ -248,66 +248,68 @@ export const PatientSettings: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 lg:space-y-10 w-full overflow-hidden">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">My Settings</h1>
-        <p className="text-slate-500 text-lg">Manage your personal information and account preferences.</p>
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-slate-900 mb-2">My Settings</h1>
+        <p className="text-slate-500 text-base lg:text-lg">Manage your personal information and account preferences.</p>
       </motion.div>
 
-      <div className="grid lg:grid-cols-3 gap-10">
-        {/* Navigation Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
-          {settingsSections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => setActiveTab(section.id)}
-              className={cn(
-                "w-full p-6 rounded-4xl border-2 text-left transition-all group",
-                activeTab === section.id 
-                  ? "border-brand-600 bg-brand-50/30 shadow-lg shadow-brand-500/5" 
-                  : "border-slate-50 bg-white hover:border-slate-200"
-              )}
-            >
-              <div className="flex items-center gap-4 mb-3">
-                <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                  activeTab === section.id ? "bg-brand-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
-                )}>
-                  <section.icon className="w-6 h-6" />
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-10">
+        {/* Navigation Tabs - Horizontally scrollable on mobile */}
+        <div className="lg:col-span-1 overflow-hidden">
+          <div className="flex lg:flex-col gap-2 sm:gap-3 overflow-x-auto pb-2 lg:pb-0 lg:space-y-4 lg:gap-0 scrollbar-hide">
+            {settingsSections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveTab(section.id)}
+                className={cn(
+                  "shrink-0 lg:w-full p-3 sm:p-4 lg:p-6 rounded-2xl lg:rounded-4xl border-2 text-left transition-all group",
+                  activeTab === section.id 
+                    ? "border-brand-600 bg-brand-50/30 shadow-lg shadow-brand-500/5" 
+                    : "border-slate-50 bg-white hover:border-slate-200"
+                )}
+              >
+                <div className="flex items-center gap-3 lg:gap-4 lg:mb-3">
+                  <div className={cn(
+                    "w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all shrink-0",
+                    activeTab === section.id ? "bg-brand-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
+                  )}>
+                    <section.icon className="w-5 h-5 lg:w-6 lg:h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={cn(
+                      "font-bold text-sm lg:text-base whitespace-nowrap lg:whitespace-normal transition-colors",
+                      activeTab === section.id ? "text-slate-900" : "text-slate-700"
+                    )}>{section.label}</h4>
+                  </div>
+                  <ChevronRight className={cn(
+                    "w-5 h-5 transition-transform hidden lg:block",
+                    activeTab === section.id ? "text-brand-600 translate-x-1" : "text-slate-300"
+                  )} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className={cn(
-                    "font-bold transition-colors",
-                    activeTab === section.id ? "text-slate-900" : "text-slate-700"
-                  )}>{section.label}</h4>
-                </div>
-                <ChevronRight className={cn(
-                  "w-5 h-5 transition-transform",
-                  activeTab === section.id ? "text-brand-600 translate-x-1" : "text-slate-300"
-                )} />
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed pl-16">{section.desc}</p>
-            </button>
-          ))}
+                <p className="text-xs text-slate-500 leading-relaxed pl-[52px] hidden lg:block">{section.desc}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content Area */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8 min-w-0">
           {activeTab === 'profile' && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="bg-white rounded-5xl border border-slate-100 shadow-sm overflow-hidden"
+              className="bg-white sm:rounded-3xl lg:rounded-5xl border-y sm:border border-slate-100 shadow-sm overflow-hidden max-w-full"
             >
-              <div className="p-10 border-b border-slate-50 bg-slate-50/30">
-                <div className="flex items-center gap-8">
-                  <div className="relative group">
+              <div className="p-4 sm:p-8 lg:p-10 border-b border-slate-50 bg-slate-50/30">
+                <div className="flex items-center gap-4 sm:gap-6 lg:gap-8">
+                  <div className="relative group shrink-0">
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -316,15 +318,20 @@ export const PatientSettings: React.FC = () => {
                       className="hidden" 
                     />
                     <div 
-                      className="w-24 h-24 rounded-full border-4 border-slate-50 bg-slate-100 overflow-hidden relative group cursor-pointer"
+                      className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full border-4 border-white bg-brand-100 overflow-hidden relative cursor-pointer shadow-md"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <img src={userData?.photoURL || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      {userData?.photoURL ? (
+                        <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : null}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {!userData?.photoURL && <User className="w-8 h-8 text-brand-400" />}
+                      </div>
                       <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         {uploadingImage ? (
-                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Camera className="w-6 h-6 text-white" />
+                          <Camera className="w-5 h-5 text-white" />
                         )}
                       </div>
                     </div>
@@ -332,28 +339,28 @@ export const PatientSettings: React.FC = () => {
                       type="button"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }} 
                       disabled={uploadingImage} 
-                      className="absolute -bottom-2 -right-2 p-3 bg-brand-600 text-white rounded-2xl shadow-lg hover:bg-brand-700 transition-all disabled:opacity-50"
+                      className="absolute -bottom-1 -right-1 p-1.5 sm:p-2 bg-brand-600 text-white rounded-lg sm:rounded-xl shadow-lg hover:bg-brand-700 transition-all disabled:opacity-50"
                     >
-                      <Camera className="w-5 h-5" />
+                      <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
-                  <div>
-                    <h3 className="text-3xl font-display font-bold text-slate-900 mb-2">
+                  <div className="min-w-0">
+                    <h3 className="text-lg sm:text-xl lg:text-3xl font-display font-bold text-slate-900 mb-1 truncate">
                       {userData?.firstName || userData?.lastName ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : (userData?.name || 'Patient')}
                     </h3>
-                    <p className="text-slate-500 font-medium mb-4">Patient ID: #{auth.currentUser?.uid?.slice(-5).toUpperCase() || '12024'} • Age: {userData?.age || 'Not Provided'}</p>
-                    <div className="flex gap-2">
-                      <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider">Verified Identity</span>
-                      <span className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-wider">Standard Plan</span>
+                    <p className="text-slate-500 font-medium text-xs sm:text-sm mb-2 truncate">ID: #{auth.currentUser?.uid?.slice(-5).toUpperCase() || '12024'} • Age: {userData?.age || 'N/A'}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="px-2 py-0.5 sm:px-3 sm:py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider">Verified</span>
+                      <span className="px-2 py-0.5 sm:px-3 sm:py-1 bg-brand-50 text-brand-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider">Standard</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <form onSubmit={handleSaveProfile} className="p-10 space-y-8">
+              <form onSubmit={handleSaveProfile} className="p-5 sm:p-10 space-y-6 sm:space-y-8">
                 {/* Basic Demographics */}
-                <h4 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Basic Demographics</h4>
-                <div className="grid md:grid-cols-2 gap-8">
+                <h4 className="text-lg sm:text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Basic Demographics</h4>
+                <div className="grid sm:grid-cols-2 gap-4 sm:gap-8">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
                     <div className="relative group">
@@ -385,8 +392,8 @@ export const PatientSettings: React.FC = () => {
                 </div>
 
                 {/* Contact Information */}
-                <h4 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Contact Information</h4>
-                <div className="grid md:grid-cols-2 gap-8">
+                <h4 className="text-lg sm:text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Contact Information</h4>
+                <div className="grid sm:grid-cols-2 gap-4 sm:gap-8">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
                     <div className="relative group">
@@ -429,8 +436,8 @@ export const PatientSettings: React.FC = () => {
                 </div>
 
                 {/* Medical Profile */}
-                <h4 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Medical Profile</h4>
-                <div className="grid md:grid-cols-3 gap-8">
+                <h4 className="text-lg sm:text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Medical Profile</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">Date of Birth</label>
                     <input 
@@ -527,11 +534,11 @@ export const PatientSettings: React.FC = () => {
                   />
                 </div>
 
-                <div className="pt-6 border-t border-slate-50 flex justify-end gap-4">
-                  <button type="button" className="px-8 py-4 bg-slate-50 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all">
+                <div className="pt-6 border-t border-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
+                  <button type="button" className="px-6 sm:px-8 py-3 sm:py-4 bg-slate-50 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all">
                     Discard Changes
                   </button>
-                  <button type="submit" disabled={isSaving} className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2 disabled:opacity-50">
+                  <button type="submit" disabled={isSaving} className="px-6 sm:px-8 py-3 sm:py-4 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                     <CheckCircle2 className="w-5 h-5" />
                     {isSaving ? "Saving..." : "Save Profile"}
                   </button>
@@ -547,8 +554,8 @@ export const PatientSettings: React.FC = () => {
               transition={{ duration: 0.5 }}
               className="space-y-8"
             >
-              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
-                <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Password Management</h3>
+              <div className="bg-white sm:rounded-3xl lg:rounded-5xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-8 lg:p-10">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-6 sm:mb-8">Password Management</h3>
                 <form onSubmit={handlePasswordUpdate} className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">Current Password</label>
@@ -592,14 +599,14 @@ export const PatientSettings: React.FC = () => {
 
           {activeTab === 'notifications' && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
-                <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Notification Preferences</h3>
-                <div className="space-y-6">
+              <div className="bg-white sm:rounded-3xl lg:rounded-5xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-8 lg:p-10">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-6 sm:mb-8">Notification Preferences</h3>
+                <div className="space-y-4 sm:space-y-6">
                   {['Email Updates', 'SMS Text Alerts', 'Push Notifications', 'Appointment Reminders'].map((pref, i) => (
-                    <div key={i} className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                      <div>
-                        <h4 className="font-bold text-slate-900">{pref}</h4>
-                        <p className="text-sm text-slate-500">Receive important alerts securely via {pref.toLowerCase()}.</p>
+                    <div key={i} className="flex items-center justify-between gap-4 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100">
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-900 text-sm sm:text-base">{pref}</h4>
+                        <p className="text-xs sm:text-sm text-slate-500 truncate sm:whitespace-normal">Receive alerts via {pref.toLowerCase()}.</p>
                       </div>
                       <button 
                         onClick={() => handleToggleNotification(pref)}
@@ -619,17 +626,17 @@ export const PatientSettings: React.FC = () => {
 
           {activeTab === 'privacy' && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10">
-                <h3 className="text-2xl font-display font-bold text-slate-900 mb-8">Privacy & Data Control</h3>
-                <div className="space-y-6">
+              <div className="bg-white sm:rounded-3xl lg:rounded-5xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-8 lg:p-10">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-6 sm:mb-8">Privacy & Data Control</h3>
+                <div className="space-y-4 sm:space-y-6">
                   <div className="p-6 bg-brand-50 border border-brand-100 rounded-3xl">
                     <h4 className="font-bold text-brand-900 mb-2">HIPAA Compliance Active</h4>
                     <p className="text-sm text-brand-700">Your data is strictly encrypted and protected under healthcare regulations.</p>
                   </div>
-                  <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                    <div>
-                      <h4 className="font-bold text-slate-900">Share Clinical Data</h4>
-                      <p className="text-sm text-slate-500">Automatically share health metrics with assigned practitioners.</p>
+                  <div className="flex items-center justify-between gap-4 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100">
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base">Share Clinical Data</h4>
+                      <p className="text-xs sm:text-sm text-slate-500">Share health metrics with assigned practitioners.</p>
                     </div>
                     <button 
                       onClick={handleTogglePrivacy}
@@ -648,7 +655,7 @@ export const PatientSettings: React.FC = () => {
 
           {activeTab === 'support' && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-              <div className="bg-white rounded-5xl border border-slate-100 shadow-sm p-10 text-center">
+              <div className="bg-white sm:rounded-3xl lg:rounded-5xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-8 lg:p-10 text-center">
                 <div className="w-20 h-20 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
                   <HelpCircle className="w-10 h-10" />
                 </div>

@@ -67,6 +67,28 @@ export const LandingPage: React.FC = () => {
         </div>
       </nav>
 
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="fixed inset-x-0 top-20 z-40 bg-white border-b border-slate-100 shadow-xl md:hidden">
+          <div className="px-6 py-6 space-y-4">
+            <a href="#features" onClick={() => setIsMenuOpen(false)} className="block py-3 text-base font-semibold text-slate-700 hover:text-brand-600 transition-colors">Features</a>
+            <Link to="/solutions" onClick={() => setIsMenuOpen(false)} className="block py-3 text-base font-semibold text-slate-700 hover:text-brand-600 transition-colors">Solutions</Link>
+            <div className="h-px bg-slate-100 my-2" />
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sign In As</p>
+            <Link to="/login?role=doctor" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 py-3 text-base font-bold text-slate-700 hover:text-brand-600 transition-colors">
+              <Stethoscope className="w-5 h-5" /> Doctor Portal
+            </Link>
+            <Link to="/login?role=patient" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 py-3 text-base font-bold text-slate-700 hover:text-brand-600 transition-colors">
+              <User className="w-5 h-5" /> Patient Portal
+            </Link>
+            <div className="h-px bg-slate-100 my-2" />
+            <Link to="/signup" onClick={() => setIsMenuOpen(false)} className="block w-full text-center py-4 bg-brand-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all">
+              Get Started
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="pt-40 pb-24 px-6 relative overflow-hidden">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
@@ -79,10 +101,10 @@ export const LandingPage: React.FC = () => {
               <Zap className="w-4 h-4" />
               Next-Gen Medical Intelligence
             </div>
-            <h1 className="text-7xl font-display font-extrabold text-slate-900 leading-[1.1] mb-8">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-display font-extrabold text-slate-900 leading-[1.1] mb-8">
               Healthcare <span className="text-brand-600 italic">Reimagined</span> with AI
             </h1>
-            <p className="text-xl text-slate-500 leading-relaxed mb-12 max-w-lg">
+            <p className="text-base sm:text-lg lg:text-xl text-slate-500 leading-relaxed mb-12 max-w-lg">
               Empower your clinical practice with real-time AI diagnostics, seamless patient management, and automated workflows. Built for the modern physician.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -186,7 +208,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-8">
             <div className="max-w-2xl">
-              <h2 className="text-5xl font-display font-bold text-slate-900 mb-6 leading-tight">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-slate-900 mb-6 leading-tight">
                 Tailored solutions for <span className="text-brand-600">every specialty</span>
               </h2>
               <p className="text-xl text-slate-500 leading-relaxed">
@@ -275,11 +297,11 @@ export const LandingPage: React.FC = () => {
 
       {/* CTA Section */}
       <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto bg-brand-600 rounded-[3rem] p-16 relative overflow-hidden text-center">
+        <div className="max-w-7xl mx-auto bg-brand-600 rounded-[2rem] sm:rounded-[3rem] p-8 sm:p-12 lg:p-16 relative overflow-hidden text-center">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent)]" />
           <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-5xl font-display font-extrabold text-white mb-8 leading-tight">Ready to transform your clinical workflow?</h2>
-            <p className="text-xl text-brand-100 mb-12">Join thousands of doctors who are already using DocPilot to provide better care.</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-white mb-8 leading-tight">Ready to transform your clinical workflow?</h2>
+            <p className="text-base sm:text-lg lg:text-xl text-brand-100 mb-12">Join thousands of doctors who are already using DocPilot to provide better care.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/signup" className="px-10 py-5 bg-white text-brand-600 rounded-3xl font-bold text-lg shadow-xl hover:bg-brand-50 transition-all">
                 Get Started for Free
@@ -294,8 +316,8 @@ export const LandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="py-20 bg-white border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
-          <div className="col-span-2">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
+          <div className="sm:col-span-2">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white">
                 <span className="font-display font-bold text-xl">D</span>
@@ -332,7 +354,7 @@ export const LandingPage: React.FC = () => {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-6 pt-12 mt-12 border-t border-slate-100 flex flex-col md:row justify-between items-center gap-6">
+        <div className="max-w-7xl mx-auto px-6 pt-12 mt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-slate-400 text-sm">© 2026 DocPilot. All rights reserved.</p>
           <div className="flex gap-8 text-sm font-semibold text-slate-500">
             <a href="#" className="hover:text-brand-600 transition-colors">Status</a>

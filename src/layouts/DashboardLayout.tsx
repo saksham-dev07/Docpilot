@@ -17,7 +17,9 @@ import {
   Search,
   Bell,
   User,
-  MessageSquare
+  MessageSquare,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -54,6 +56,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -218,7 +221,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-30">
-          <div className="flex-1 max-w-xl">
+          {/* Mobile Hamburger */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            className="lg:hidden p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors mr-2 shrink-0"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <div className="flex-1 max-w-xl hidden sm:block">
             <div className="relative group z-50">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
               <input 
@@ -310,14 +320,120 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   <User className="w-4 h-4" />
                 )}
               </div>
-              <span className="text-sm font-semibold text-slate-700 group-hover:text-brand-700">{userName.split(' ')[0] || 'Profile'}</span>
+              <span className="text-sm font-semibold text-slate-700 group-hover:text-brand-700 hidden sm:inline">{userName.split(' ')[0] || 'Profile'}</span>
             </Link>
           </div>
         </header>
 
-        <div className="p-4 lg:p-10">
+        {/* Mobile Slide-Out Menu */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col animate-in slide-in-from-left">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <Link to={isDoctorPath ? '/doctor' : '/patient'} className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
+                  <div className="w-8 h-8 flex items-center justify-center bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/20">
+                    <span className="font-display font-bold text-lg">D</span>
+                  </div>
+                  <span className="font-display font-bold text-xl tracking-tight text-slate-900">DocPilot</span>
+                </Link>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+
+              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+                {sidebarItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group",
+                        isActive 
+                          ? "bg-brand-50 text-brand-600 font-semibold" 
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      )}
+                    >
+                      <item.icon className={cn(
+                        "w-5 h-5 transition-colors",
+                        isActive ? "text-brand-600" : "text-slate-400 group-hover:text-slate-900"
+                      )} />
+                      <span>{item.label}</span>
+                      {isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-600" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="p-4 border-t border-slate-100">
+                <div className="flex items-center gap-3 mb-4 px-2">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-100 shrink-0">
+                    <img 
+                      src={userPhoto || (isDoctorPath ? "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=100&h=100" : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100")} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer" 
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-900 truncate">{userName}</p>
+                    <p className="text-xs text-slate-500 truncate">{userSubtext}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 lg:p-10 pb-24 lg:pb-10">
           {children}
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-xl border-t border-slate-100 lg:hidden">
+          <div className="flex items-center justify-around py-2 px-2">
+            {(isDoctorPath ? [
+              { icon: LayoutDashboard, label: 'Home', path: '/doctor' },
+              { icon: Users, label: 'OPD', path: '/opd' },
+              { icon: Calendar, label: 'Appointments', path: '/doctor/appointments' },
+              { icon: MessageSquare, label: 'Chats', path: '/doctor/consultations' },
+              { icon: Settings, label: 'Settings', path: '/doctor/settings' },
+            ] : [
+              { icon: LayoutDashboard, label: 'Health', path: '/patient' },
+              { icon: Calendar, label: 'Book', path: '/book' },
+              { icon: MessageSquare, label: 'Chats', path: '/patient/consultations' },
+              { icon: Archive, label: 'Records', path: '/patient/archive' },
+              { icon: Settings, label: 'Settings', path: '/patient/settings' },
+            ]).map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all min-w-0",
+                    isActive ? "text-brand-600" : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className={cn("text-[10px] font-bold truncate", isActive && "text-brand-600")}>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </main>
     </div>
   );

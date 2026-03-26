@@ -127,8 +127,7 @@ export const PatientDashboard: React.FC = () => {
       collection(db, 'appointments'),
       where('patientId', '==', auth.currentUser.uid),
       where('date', '>=', today),
-      orderBy('date', 'asc'),
-      limit(3)
+      orderBy('date', 'asc')
     );
 
     const unsubscribeApts = onSnapshot(aptQuery, (snapshot) => {
@@ -140,8 +139,7 @@ export const PatientDashboard: React.FC = () => {
       collection(db, 'consultations'),
       where('patientId', '==', auth.currentUser.uid),
       where('date', '>=', today),
-      orderBy('date', 'asc'),
-      limit(3)
+      orderBy('date', 'asc')
     );
 
     const unsubscribeCons = onSnapshot(consQuery, (snapshot) => {
@@ -193,16 +191,16 @@ export const PatientDashboard: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl font-display font-extrabold text-slate-900 mb-2">Hello, {userName}</h1>
-          <p className="text-slate-500 text-lg">Here's your health overview for today.</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-slate-900 mb-2">Hello, {userName}</h1>
+          <p className="text-slate-500 text-base lg:text-lg">Here's your health overview for today.</p>
         </motion.div>
         
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-          <button onClick={() => setShowVitalsModal(true)} className="flex-1 md:flex-none justify-center px-6 py-4 bg-slate-100 text-slate-700 rounded-3xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+          <button onClick={() => setShowVitalsModal(true)} className="flex-1 md:flex-none justify-center px-5 py-3 sm:px-6 sm:py-4 bg-slate-100 text-slate-700 rounded-3xl font-bold text-sm sm:text-base hover:bg-slate-200 transition-all flex items-center gap-2">
             <Activity className="w-5 h-5" />
             Log Vitals
           </button>
-          <Link to="/book" className="flex-1 md:flex-none justify-center px-8 py-4 bg-brand-600 text-white rounded-3xl font-bold text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2 group">
+          <Link to="/book" className="flex-1 md:flex-none justify-center px-5 py-3 sm:px-8 sm:py-4 bg-brand-600 text-white rounded-3xl font-bold text-sm sm:text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all flex items-center gap-2 group">
             Book New Appointment
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -217,7 +215,7 @@ export const PatientDashboard: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
-            className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+            className="bg-white p-5 sm:p-8 rounded-4xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
           >
             <div className="flex justify-between items-start mb-6">
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.color}`}>
@@ -245,35 +243,37 @@ export const PatientDashboard: React.FC = () => {
           className="lg:col-span-2 space-y-6"
         >
           <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-              <h2 className="text-xl font-display font-bold text-slate-900">Upcoming Appointments</h2>
+            <div className="p-4 sm:p-8 border-b border-slate-50 flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900">Upcoming Appointments</h2>
               <Link to="/book" className="text-brand-600 font-bold text-sm hover:underline">View Calendar</Link>
             </div>
-            <div className="divide-y divide-slate-50">
+            <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-50 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
               {validAppointments.length > 0 ? validAppointments.map((apt) => (
-                <div key={apt.id} className="p-8 flex items-center gap-8 hover:bg-slate-50/50 transition-colors group">
-                  <div className="w-16 h-16 rounded-3xl bg-brand-50 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-xs font-black text-brand-600 uppercase">
-                      {apt.date ? new Date(apt.date).toLocaleDateString('en-US', { month: 'short' }) : 'MAR'}
-                    </span>
-                    <span className="text-xl font-display font-black text-brand-700 leading-none">
-                      {apt.date ? new Date(apt.date).toLocaleDateString('en-US', { day: 'numeric' }) : '25'}
-                    </span>
+                <div key={apt.id} className="p-4 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 hover:bg-slate-50/50 transition-colors group">
+                  <div className="flex items-center gap-4 sm:gap-8">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-brand-50 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-[10px] sm:text-xs font-black text-brand-600 uppercase">
+                        {apt.date ? new Date(apt.date).toLocaleDateString('en-US', { month: 'short' }) : 'MAR'}
+                      </span>
+                      <span className="text-lg sm:text-xl font-display font-black text-brand-700 leading-none">
+                        {apt.date ? new Date(apt.date).toLocaleDateString('en-US', { day: 'numeric' }) : '25'}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">{apt.doctorName}</h4>
+                      <p className="text-sm text-slate-500">{apt.type || 'In-person Visit'}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-bold text-slate-900 truncate">{apt.doctorName}</h4>
-                    <p className="text-sm text-slate-500">{apt.type || 'In-person Visit'}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center justify-end gap-2 text-slate-900 font-bold mb-1">
+                  <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1 ml-auto shrink-0">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
                       <Clock className="w-4 h-4 text-brand-600" />
                       {apt.time}
                     </div>
-                    <span className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-bold block mb-3 text-center">
+                    <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold text-center">
                       {apt.status}
                     </span>
-                    <button onClick={() => setActiveChat({ doctorId: apt.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${apt.date} • ${apt.time}` })} className="w-full relative py-2 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs hover:bg-brand-100 transition-all flex items-center justify-center gap-1.5 shadow-sm">
-                      <MessageSquare className="w-3.5 h-3.5" /> Message Doctor
+                    <button onClick={() => setActiveChat({ doctorId: apt.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${apt.date} • ${apt.time}` })} className="relative py-2 px-3 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs hover:bg-brand-100 transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                      <MessageSquare className="w-3.5 h-3.5" /> Message
                       {apt.messages?.length > 0 && apt.messages[apt.messages.length - 1].senderId !== auth.currentUser?.uid && !apt.messages[apt.messages.length - 1].read && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white" />
                       )}
@@ -281,7 +281,7 @@ export const PatientDashboard: React.FC = () => {
                   </div>
                 </div>
               )) : (
-                <div className="p-24 text-center bg-white border border-dashed border-slate-200 rounded-3xl m-8">
+                <div className="p-8 sm:p-24 text-center bg-white border border-dashed border-slate-200 rounded-3xl m-4 sm:m-8">
                   <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-xl font-bold text-slate-700 mb-2">No Upcoming Visits</h3>
                   <p className="text-slate-500 max-w-sm mx-auto">You don't have any in-person appointments scheduled. Book one to see your doctor.</p>
@@ -292,39 +292,41 @@ export const PatientDashboard: React.FC = () => {
 
           {/* Upcoming Consultations */}
           <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-              <h2 className="text-xl font-display font-bold text-slate-900">Upcoming Chat Consultations</h2>
+            <div className="p-4 sm:p-8 border-b border-slate-50 flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900">Upcoming Chat Consultations</h2>
               <Link to="/book" className="text-brand-600 font-bold text-sm hover:underline">View Calendar</Link>
             </div>
-            <div className="divide-y divide-slate-50">
+            <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-50 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
               {validConsultations.length > 0 ? validConsultations.map((cons) => (
-                <div key={cons.id} className="p-8 flex items-center gap-8 hover:bg-slate-50/50 transition-colors group">
-                  <div className="w-16 h-16 rounded-3xl bg-brand-50 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-xs font-black text-brand-600 uppercase">
-                      {cons.date ? new Date(cons.date).toLocaleDateString('en-US', { month: 'short' }) : 'MAR'}
-                    </span>
-                    <span className="text-xl font-display font-black text-brand-700 leading-none">
-                      {cons.date ? new Date(cons.date).toLocaleDateString('en-US', { day: 'numeric' }) : '25'}
-                    </span>
+                <div key={cons.id} className="p-4 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 hover:bg-slate-50/50 transition-colors group">
+                  <div className="flex items-center gap-4 sm:gap-8">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-brand-50 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-[10px] sm:text-xs font-black text-brand-600 uppercase">
+                        {cons.date ? new Date(cons.date).toLocaleDateString('en-US', { month: 'short' }) : 'MAR'}
+                      </span>
+                      <span className="text-lg sm:text-xl font-display font-black text-brand-700 leading-none">
+                        {cons.date ? new Date(cons.date).toLocaleDateString('en-US', { day: 'numeric' }) : '25'}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">{cons.doctorName}</h4>
+                      <p className="text-sm text-slate-500">Virtual Chat Session</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-bold text-slate-900 truncate">{cons.doctorName}</h4>
-                    <p className="text-sm text-slate-500">Virtual Chat Session</p>
-                  </div>
-                  <div className="text-right shrink-0 flex flex-col items-end">
-                    <div className="flex items-center justify-end gap-2 text-slate-900 font-bold mb-1">
+                  <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1 ml-auto shrink-0">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
                       <Clock className="w-4 h-4 text-brand-600" />
                       {cons.time}
                     </div>
-                    <span className="px-4 py-1.5 bg-brand-50 text-brand-600 rounded-full text-xs font-bold mb-3 block w-full text-center">
+                    <span className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-xs font-bold text-center">
                       {cons.status || 'Scheduled'}
                     </span>
-                       <button onClick={() => setActiveChat({ doctorId: cons.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${cons.date} • ${cons.time}` })} className="w-full relative py-2.5 bg-brand-50 text-brand-600 rounded-xl font-bold text-sm hover:bg-brand-100 transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <MessageSquare className="w-4 h-4" /> Start Chat Session
-                        {cons.messages?.length > 0 && cons.messages[cons.messages.length - 1].senderId !== auth.currentUser?.uid && !cons.messages[cons.messages.length - 1].read && (
-                          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
-                        )}
-                      </button>
+                    <button onClick={() => setActiveChat({ doctorId: cons.doctorId, patientId: auth.currentUser?.uid || '', sessionContext: `${cons.date} • ${cons.time}` })} className="relative py-2 px-3 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-100 transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                      <MessageSquare className="w-4 h-4" /> Chat
+                      {cons.messages?.length > 0 && cons.messages[cons.messages.length - 1].senderId !== auth.currentUser?.uid && !cons.messages[cons.messages.length - 1].read && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white shadow-sm" />
+                      )}
+                    </button>
                   </div>
                 </div>
               )) : (
@@ -338,16 +340,16 @@ export const PatientDashboard: React.FC = () => {
           </div>
 
           {/* Health Insights */}
-          <div className={cn("rounded-4xl p-10 text-white relative overflow-hidden transition-colors duration-500", getOverviewColor(userData?.vitalsHistory))}>
+          <div className={cn("rounded-4xl p-6 sm:p-10 text-white relative overflow-hidden transition-colors duration-500", getOverviewColor(userData?.vitalsHistory))}>
             <div className="absolute top-0 right-0 p-6 opacity-10">
-              {getOverviewColor(userData?.vitalsHistory) === 'bg-emerald-600' ? <CheckCircle2 className="w-32 h-32" /> : <AlertCircle className="w-32 h-32" />}
+              {getOverviewColor(userData?.vitalsHistory) === 'bg-emerald-600' ? <CheckCircle2 className="w-24 sm:w-32 h-24 sm:h-32" /> : <AlertCircle className="w-24 sm:w-32 h-24 sm:h-32" />}
             </div>
             <div className="relative z-10">
-              <h3 className="text-3xl font-display font-bold mb-4">Health Overview</h3>
-              <p className="text-white/80 text-lg mb-8 max-w-xl leading-relaxed">
+              <h3 className="text-2xl sm:text-3xl font-display font-bold mb-4">Health Overview</h3>
+              <p className="text-white/80 text-base sm:text-lg mb-8 max-w-xl leading-relaxed">
                 {generateHealthAnalysis(userData?.vitalsHistory)}
               </p>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="bg-white/10 backdrop-blur-lg p-4 rounded-3xl border border-white/10 flex-1">
                   <p className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Blood Type</p>
                   <p className="text-2xl font-bold">{userData?.bloodType || 'Unknown'}</p>
