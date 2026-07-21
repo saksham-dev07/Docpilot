@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider, githubProvider } from '../firebase';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { Mail, Lock, ArrowRight, Github, Chrome, Stethoscope, User } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -39,8 +39,6 @@ export const LoginPage: React.FC = () => {
           return;
         }
       } else {
-        // This shouldn't happen if they have an auth account but no firestore doc, 
-        // but we should handle it gracefully.
         await auth.signOut();
         setError("User profile not found. Please sign up.");
         setLoading(false);
@@ -80,7 +78,6 @@ export const LoginPage: React.FC = () => {
           return;
         }
       } else {
-        // If Google user doesn't exist in Firestore, they should go to signup
         await auth.signOut();
         setError("Account not found. Please sign up first.");
         setLoading(false);
@@ -90,6 +87,40 @@ export const LoginPage: React.FC = () => {
       navigate(role === 'doctor' ? '/doctor' : '/patient');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithPopup(auth, githubProvider);
+      const user = result.user;
+
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.role !== role) {
+          await auth.signOut();
+          setError(`This account is registered as a ${userData.role}. Please use the ${userData.role} portal.`);
+          setLoading(false);
+          return;
+        }
+      } else {
+        await auth.signOut();
+        setError("Account not found. Please sign up first.");
+        setLoading(false);
+        return;
+      }
+
+      navigate(role === 'doctor' ? '/doctor' : '/patient');
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in with GitHub.");
     } finally {
       setLoading(false);
     }
@@ -197,7 +228,12 @@ export const LoginPage: React.FC = () => {
             <Chrome className="w-5 h-5" />
             Google
           </button>
-          <button type="button" className="flex items-center justify-center gap-3 py-3.5 border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-all font-bold text-slate-700">
+          <button 
+            type="button" 
+            onClick={handleGithubLogin}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 py-3.5 border-2 border-slate-100 rounded-2xl hover:bg-slate-50 transition-all font-bold text-slate-700 disabled:opacity-50"
+          >
             <Github className="w-5 h-5" />
             GitHub
           </button>

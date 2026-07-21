@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, db, googleProvider, githubProvider } from '../firebase';
 import { AuthLayout } from '../layouts/AuthLayout';
-import { Mail, Lock, User, ArrowRight, ShieldCheck, Stethoscope, Chrome } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, Stethoscope, Chrome, Github } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const SignupPage: React.FC = () => {
@@ -30,7 +30,6 @@ export const SignupPage: React.FC = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      // Check if user document already exists
       const docRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(docRef);
       
@@ -56,12 +55,58 @@ export const SignupPage: React.FC = () => {
         if (role === 'doctor') {
           userData.licenseNumber = 'PENDING';
         } else {
-          userData.patientId = `P-${Math.floor(10000 + Math.random() * 90000)}`;
+          userData.patientId = `P-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
         }
 
         await setDoc(docRef, userData);
       }
       
+      navigate(role === 'doctor' ? '/doctor' : '/patient');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGithubSignup = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithPopup(auth, githubProvider);
+      const user = result.user;
+
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const existingRole = docSnap.data().role;
+        if (existingRole !== role) {
+          await auth.signOut();
+          setError(`An account already exists with the role of ${existingRole}. Please sign in through the ${existingRole} portal.`);
+          setLoading(false);
+          return;
+        }
+      } else {
+        const [firstName, ...lastNameParts] = (user.displayName || user.email?.split('@')[0] || '').split(' ');
+        const userData: any = {
+          uid: user.uid,
+          email: user.email,
+          firstName: firstName || 'User',
+          lastName: lastNameParts.join(' ') || '',
+          role: role,
+          createdAt: new Date().toISOString(),
+        };
+
+        if (role === 'doctor') {
+          userData.licenseNumber = 'PENDING';
+        } else {
+          userData.patientId = `P-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+        }
+
+        await setDoc(docRef, userData);
+      }
+
       navigate(role === 'doctor' ? '/doctor' : '/patient');
     } catch (err: any) {
       setError(err.message);
@@ -91,7 +136,7 @@ export const SignupPage: React.FC = () => {
       if (role === 'doctor') {
         userData.licenseNumber = formData.licenseNumber;
       } else {
-        userData.patientId = `P-${Math.floor(10000 + Math.random() * 90000)}`;
+        userData.patientId = `P-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
       }
 
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -225,7 +270,7 @@ export const SignupPage: React.FC = () => {
         <div className="flex items-start gap-3 p-4 bg-brand-50 rounded-2xl border border-brand-100">
           <ShieldCheck className="w-5 h-5 text-brand-600 mt-0.5" />
           <p className="text-xs text-brand-700 leading-relaxed">
-            By creating an account, you agree to our <a href="#" className="font-bold underline">Terms of Service</a> and <a href="#" className="font-bold underline">Privacy Policy</a>. All medical data is handled with strict HIPAA compliance.
+            By creating an account, you agree to our <Link to="/terms" className="font-bold underline">Terms of Service</Link> and <Link to="/privacy" className="font-bold underline">Privacy Policy</Link>. All medical data is handled with strict HIPAA compliance.
           </p>
         </div>
 
@@ -247,15 +292,26 @@ export const SignupPage: React.FC = () => {
           </div>
         </div>
 
-        <button 
-          type="button"
-          onClick={handleGoogleSignup}
-          disabled={loading}
-          className="w-full py-4 border-2 border-slate-100 text-slate-700 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-          <Chrome className="w-6 h-6" />
-          Sign up with Google
-        </button>
+        <div className="grid grid-cols-2 gap-4">
+          <button 
+            type="button"
+            onClick={handleGoogleSignup}
+            disabled={loading}
+            className="w-full py-3.5 border-2 border-slate-100 text-slate-700 rounded-2xl font-bold text-base hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            <Chrome className="w-5 h-5" />
+            Google
+          </button>
+          <button 
+            type="button"
+            onClick={handleGithubSignup}
+            disabled={loading}
+            className="w-full py-3.5 border-2 border-slate-100 text-slate-700 rounded-2xl font-bold text-base hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            <Github className="w-5 h-5" />
+            GitHub
+          </button>
+        </div>
 
         <p className="text-center text-slate-500 font-medium pt-4">
           Already have an account? <Link to={`/login?role=${role}`} className="text-brand-600 font-bold hover:text-brand-700">Sign In</Link>

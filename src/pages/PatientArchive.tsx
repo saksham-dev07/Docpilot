@@ -78,6 +78,7 @@ export const PatientArchive: React.FC = () => {
   const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    let currentBlobUrl: string | null = null;
     if (viewRecord && viewRecord.appwriteViewUrl) {
       setFileViewUrl(viewRecord.appwriteViewUrl);
     } else if (viewRecord && viewRecord.fileData) {
@@ -86,12 +87,15 @@ export const PatientArchive: React.FC = () => {
       setFileViewUrl(viewRecord.fileUrl);
     } else if (viewRecord && viewRecord.localFileId) {
       readFile(viewRecord.localFileId).then(file => {
-        if (file) setFileViewUrl(URL.createObjectURL(file));
+        if (file) {
+          currentBlobUrl = URL.createObjectURL(file);
+          setFileViewUrl(currentBlobUrl);
+        }
       }).catch(err => console.error("Error reading preview file:", err));
     }
     return () => {
-      if (fileViewUrl && fileViewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(fileViewUrl);
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
         setFileViewUrl(null);
       }
     };

@@ -33,19 +33,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: 'docto
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setRole(userDoc.data().role);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            setRole(userDoc.data().role);
+          } else {
+            setRole(allowedRole || null);
+          }
+        } catch (err) {
+          console.error("Error fetching user profile:", err);
+          if (allowedRole) setRole(allowedRole);
+        } finally {
+          setLoading(false);
         }
       } else {
         setUser(null);
         setRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [allowedRole]);
 
   if (loading) {
     return (
@@ -59,7 +68,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: 'docto
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRole && role !== allowedRole) {
+  if (allowedRole && role && role !== allowedRole) {
     return <Navigate to={role === 'doctor' ? '/doctor' : '/patient'} replace />;
   }
 

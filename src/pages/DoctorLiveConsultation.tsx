@@ -19,6 +19,7 @@ import {
 import { Link } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { cn } from '../lib/utils';
 
 export const DoctorLiveConsultation: React.FC = () => {
   const [isMuted, setIsMuted] = React.useState(false);
@@ -28,10 +29,16 @@ export const DoctorLiveConsultation: React.FC = () => {
   useEffect(() => {
     const fetchDoctor = async () => {
       if (auth.currentUser) {
-        const docRef = doc(db, 'users', auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setDoctorName(docSnap.data().name);
+        try {
+          const docRef = doc(db, 'users', auth.currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+            setDoctorName(fullName || 'Doctor');
+          }
+        } catch (e) {
+          console.error(e);
         }
       }
     };
@@ -203,7 +210,3 @@ export const DoctorLiveConsultation: React.FC = () => {
     </div>
   );
 };
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}

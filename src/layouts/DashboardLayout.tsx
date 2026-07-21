@@ -122,19 +122,23 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     let unsubscribe = () => {};
     if (auth.currentUser) {
-      unsubscribe = onSnapshot(doc(db, 'users', auth.currentUser.uid), (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setUserName(`${data.firstName || ''} ${data.lastName || ''}`.trim() || 'User');
-          setUserRole(data.role);
-          setUserPhoto(data.photoURL || null);
-          if (data.role === 'doctor') {
-            setUserSubtext(data.specialty || 'Medical Professional');
-          } else {
-            setUserSubtext(`Patient ID: ${data.patientId || '#12024'}`);
+      unsubscribe = onSnapshot(
+        doc(db, 'users', auth.currentUser.uid), 
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserName(`${data.firstName || ''} ${data.lastName || ''}`.trim() || 'User');
+            setUserRole(data.role);
+            setUserPhoto(data.photoURL || null);
+            if (data.role === 'doctor') {
+              setUserSubtext(data.specialty || 'Medical Professional');
+            } else {
+              setUserSubtext(`Patient ID: ${data.patientId || '#12024'}`);
+            }
           }
-        }
-      });
+        },
+        (err) => console.warn('User doc snapshot listener error:', err)
+      );
     }
     return () => unsubscribe();
   }, []);

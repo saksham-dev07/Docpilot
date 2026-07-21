@@ -32,7 +32,7 @@
         "date": { "type": "string", "format": "date" },
         "time": { "type": "string" },
         "type": { "type": "string", "enum": ["In-person", "Video Call"] },
-        "status": { "type": "string", "enum": ["Scheduled", "In Progress", "Completed", "Waiting"] },
+        "status": { "type": "string", "enum": ["Scheduled", "In Progress", "Completed", "Waiting", "Rescheduled", "Cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["doctorId", "patientId", "date", "time", "type", "status", "createdAt"]
@@ -49,7 +49,7 @@
         "patientName": { "type": "string" },
         "date": { "type": "string", "format": "date" },
         "time": { "type": "string" },
-        "status": { "type": "string", "enum": ["Live", "Scheduled", "Completed"] },
+        "status": { "type": "string", "enum": ["Live", "Scheduled", "Completed", "Rescheduled", "Cancelled"] },
         "summary": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },

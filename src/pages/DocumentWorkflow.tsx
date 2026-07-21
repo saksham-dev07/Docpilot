@@ -122,7 +122,7 @@ export const DocumentWorkflow: React.FC = () => {
     }
     
     if (file.size > 20 * 1024 * 1024) {
-      alert("File is too large securely bypassing 20MB limit.");
+      alert("File is too large. Maximum allowed size is 20MB.");
       return;
     }
     
