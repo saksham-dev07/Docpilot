@@ -12,6 +12,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/landing-page.png" alt="DocPilot Platform Preview" width="100%" style="border-radius: 16px;" />
+</p>
+
+---
+
 ## 🏗️ System Architecture
 
 DocPilot uses a hybrid cloud architecture for maximum reliability and regulatory compliance:
