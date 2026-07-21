@@ -13,7 +13,7 @@
 ---
 
 <p align="center">
-  <img src="assets/landing-page.png" alt="DocPilot Platform Preview" width="100%" style="border-radius: 16px;" />
+  <img src="assets/landing-page.jpeg" alt="DocPilot Platform Preview" width="100%" style="border-radius: 16px;" />
 </p>
 
 ---
